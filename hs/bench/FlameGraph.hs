@@ -7,7 +7,7 @@ import GHC.Generics
 import Criterion
 import Criterion.Main
 import qualified Data.Vector as V
-import Data.Parse.Tree
+import Data.Tree.Parse
 import Control.DeepSeq
 import Control.Exception
 

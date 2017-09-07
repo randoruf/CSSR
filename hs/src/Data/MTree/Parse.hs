@@ -4,7 +4,7 @@ module Data.MTree.Parse where
 
 import CSSR.Prelude.Mutable
 import Control.Monad
-import Data.CSSR.Alphabet
+import Data.Alphabet
 import qualified Data.Tree.Parse as P
 
 import qualified Data.HashSet          as HS (member, fromList, union)

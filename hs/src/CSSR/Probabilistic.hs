@@ -1,7 +1,8 @@
-module Data.CSSR.Leaf.Probabilistic where
+module CSSR.Probabilistic where
 
 import CSSR.Prelude
-import Data.Statistics.KologorovSmirnov
+import CSSR.Statistics.KologorovSmirnov
+
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as MV
 import Control.Monad.Primitive
@@ -9,26 +10,17 @@ import Control.Monad.Primitive
 class Probabilistic leaf where
   frequency :: leaf -> Vector Integer
 
-  distribution :: leaf -> Vector Double
-  distribution = freqToDist . frequency
+distribution :: Probabilistic leaf => leaf -> Vector Double
+distribution = freqToDist . frequency
 
-  totalCounts :: a -> Integer
-  totalCounts a = foldr (+) 0 $ frequency a
+totalCounts :: Probabilistic leaf => leaf -> Integer
+totalCounts a = foldr (+) 0 $ frequency a
 
-  totalCounts_ :: a -> Double
-  totalCounts_ = fromIntegral . totalCounts
-
-  rounded :: leaf -> Vector Float
-  rounded leaf = V.map (shorten 2) (distribution leaf)
-    where
-      shorten :: Int -> Double -> Float
-      shorten n f = (fromInteger $ round $ f * (10^n)) / (10.0^^n)
-
-  distribution :: a -> Vector Double
-  distribution p = fmap ((/ total) . fromIntegral) . frequency $ p
-    where
-      total :: Double
-      total = totalCounts_ p
+rounded :: Probabilistic leaf => leaf -> Vector Float
+rounded leaf = V.map (shorten 2) (distribution leaf)
+  where
+    shorten :: Int -> Double -> Float
+    shorten n f = (fromInteger $ round $ f * (10^n)) / (10.0^^n)
 
 matches :: (Probabilistic a, Probabilistic b) => a -> b -> Double -> Bool
 matches a b = matchesDists (probabilisticToTuple a) (probabilisticToTuple b)

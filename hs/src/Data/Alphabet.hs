@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-module Data.CSSR.Alphabet where
+module Data.Alphabet where
 
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS

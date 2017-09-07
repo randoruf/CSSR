@@ -1,8 +1,8 @@
 module Data.MTree.ParseSpec where
 
-import Data.Parse.MTree
-import Data.CSSR.Alphabet
-import qualified Data.Parse.Tree as P
+import Data.MTree.Parse
+import Data.Alphabet
+import qualified Data.Tree.Parse as P
 import qualified Data.HashSet as HS
 import qualified Data.Vector as V
 

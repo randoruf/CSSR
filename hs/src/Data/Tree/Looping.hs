@@ -13,69 +13,68 @@ import qualified Data.HashTable.Class as H
 import Data.Foldable
 
 import CSSR.Prelude
-import Data.CSSR.Alphabet
-import Data.Hist.Tree (HLeaf, HLeafBody, HistTree(..))
-import qualified Data.Hist.Tree as Hist
+import Data.Alphabet
+import qualified Data.Tree.Hist as Hist
 
-import Data.CSSR.Leaf.Probabilistic (Probabilistic)
-import qualified Data.CSSR.Leaf.Probabilistic as Prob
+import CSSR.Probabilistic (Probabilistic)
+import qualified CSSR.Probabilistic as Prob
 
-data LLeaf = LLeaf
-  { body      :: Either LLeaf LLeafBody
-  , children  :: HashMap Event LLeaf
-  , parent    :: Maybe LLeaf
+data Leaf = Leaf
+  { body      :: Either Leaf LeafBody
+  , children  :: HashMap Event Leaf
+  , parent    :: Maybe Leaf
   }
 
-data LLeafBody = LLeafBody
-  { histories :: HashSet HLeaf
+data LeafBody = LeafBody
+  { histories :: HashSet Hist.Leaf
   , frequency :: Vector Integer
   } deriving (Show, Eq, Generic)
 
-data LoopingTree = LoopingTree
-  { _terminals :: HashSet LLeaf
-  , _root :: LLeaf
+data Tree = Tree
+  { _terminals :: HashSet Leaf
+  , _root :: Leaf
   }
 
-instance Eq LLeaf where
-  (LLeaf b0 c0 _) == (LLeaf b1 c1 _) = b0 == b1 && c0 == c1
+instance Eq Leaf where
+  (Leaf b0 c0 _) == (Leaf b1 c1 _) = b0 == b1 && c0 == c1
 
-instance Show LLeaf where
-  show (LLeaf b c p) =
+instance Show Leaf where
+  show (Leaf b c p) =
     case b of
-      Left (LLeaf b' _ _) ->
+      Left (Leaf b' _ _) ->
         case b' of
-          Left _                  -> "LLeaf{Loop(<error>), " ++ show c ++"}"
-          Right (LLeafBody hs fs) -> "LLeaf{Loop("++ show hs ++ ", " ++ show fs ++ ", " ++ show c ++ ")}"
-      Right (LLeafBody hs fs) -> "LLeaf{"++ show hs ++ ", " ++ show fs ++ ", " ++ show c ++ "}"
+          Left _                  -> "Leaf{Loop(<error>), " ++ show c ++"}"
+          Right (LeafBody hs fs) -> "Leaf{Loop("++ show hs ++ ", " ++ show fs ++ ", " ++ show c ++ ")}"
+      Right (LeafBody hs fs) -> "Leaf{"++ show hs ++ ", " ++ show fs ++ ", " ++ show c ++ "}"
 
-instance Probabilistic LLeaf where
-  frequency (LLeaf b c p) =
+instance Probabilistic Leaf where
+  frequency (Leaf b c p) =
     case b of
-      Left (LLeaf b' _ _) -> case b' of
+      Left (Leaf b' _ _) -> case b' of
           Left _                 -> error "should not exist"
-          Right (LLeafBody _ fs) -> fs
-      Right (LLeafBody _ fs) -> fs
+          Right (LeafBody _ fs) -> fs
+      Right (LeafBody _ fs) -> fs
 
 
-instance Hashable LLeafBody
-instance Hashable LLeaf where
-  hashWithSalt salt (LLeaf b _ _) = hashWithSalt salt b
+instance Hashable LeafBody
+instance Hashable Leaf where
+  hashWithSalt salt (Leaf b _ _) = hashWithSalt salt b
 
 --path :: forall f. Applicative f
 --             => Vector Event
---             -> (LLeafBody -> f LLeafBody)
---             -> LLeaf
---             -> f LLeaf
+--             -> (LeafBody -> f LeafBody)
+--             -> Leaf
+--             -> f Leaf
 --path events fn = go 0
 --  where
---    go :: Int -> LLeaf -> f LLeaf
---    go dpth (LLeaf body childs _) =
+--    go :: Int -> Leaf -> f Leaf
+--    go dpth (Leaf body childs _) =
 --      if dpth == V.length events - 1
---      then LLeaf <$> fn body <*> pure childs <*> Nothing
---      else LLeaf <$> fn body <*> nextChilds <*> Nothing
+--      then Leaf <$> fn body <*> pure childs <*> Nothing
+--      else Leaf <$> fn body <*> nextChilds <*> Nothing
 --
 --      where
---        nextChilds :: f (HashMap Event LLeaf)
+--        nextChilds :: f (HashMap Event Leaf)
 --        nextChilds =
 --          case HM.lookup c childs of
 --            Just child -> HM.insert c <$> go (dpth + 1) child <*> pure childs
@@ -85,10 +84,10 @@ instance Hashable LLeaf where
 --            c = V.unsafeIndex events dpth
 --
 --
---        buildNew :: Int -> f LLeaf
+--        buildNew :: Int -> f Leaf
 --        buildNew d
---          | d == V.length events - 1 = LLeaf <$> mkBod events <*> pure mempty
---          | otherwise = LLeaf <$> mkBod es <*> childs_
+--          | d == V.length events - 1 = Leaf <$> mkBod events <*> pure mempty
+--          | otherwise = Leaf <$> mkBod es <*> childs_
 --          where
 --            c :: Event
 --            c = V.unsafeIndex events (d + 1)
@@ -96,10 +95,10 @@ instance Hashable LLeaf where
 --            es :: Vector Event
 --            es = V.take (d + 1) events
 --
---            mkBod :: Vector Event -> f LLeafBody
---            mkBod es' = fn (LLeafBody es' 0 mempty)
+--            mkBod :: Vector Event -> f LeafBody
+--            mkBod es' = fn (LeafBody es' 0 mempty)
 --
---            childs_ :: f (HashMap Char LLeaf)
+--            childs_ :: f (HashMap Char Leaf)
 --            childs_ = HM.singleton c <$> buildNew (d + 1)
 
 
@@ -118,12 +117,12 @@ instance Hashable LLeaf where
 --     // We will merge edgesets in Phase III.
 --   ENDIF
 --
-type EdgeGroup = (Vector Double, Vector Integer, HashSet LLeaf)
+type EdgeGroup = (Vector Double, Vector Integer, HashSet Leaf)
 
-groupEdges :: Double -> LoopingTree -> HashSet EdgeGroup
-groupEdges sig (LoopingTree terms _) = HS.foldr part HS.empty terms
+groupEdges :: Double -> Tree -> HashSet EdgeGroup
+groupEdges sig (Tree terms _) = HS.foldr part HS.empty terms
   where
-    part :: LLeaf -> HashSet EdgeGroup -> HashSet EdgeGroup
+    part :: Leaf -> HashSet EdgeGroup -> HashSet EdgeGroup
     part term groups =
       case foundEdge of
         Nothing -> HS.insert (termDist, termFreq, HS.singleton term) groups
@@ -167,14 +166,14 @@ groupEdges sig (LoopingTree terms _) = HS.foldr part HS.empty terms
 -- --   ENDFOR
 -- --   RETURN TRUE
 --
--- isHomogeneous :: Double -> LLeaf -> Bool
+-- isHomogeneous :: Double -> Leaf -> Bool
 -- isHomogeneous sig ll = foldr step True allPChilds
 --   where
---     allPChilds :: HashSet HLeaf
+--     allPChilds :: HashSet Leaf
 --     allPChilds = HS.fromList $
 --       HS.toList (histories . body $ ll) >>= HM.elems . view Hist.children
 --
---     step :: HLeaf -> Bool -> Bool
+--     step :: Leaf -> Bool -> Bool
 --     step _  False = False
 --     step pc _     = Prob.matches ll pc sig
 --
@@ -192,33 +191,33 @@ groupEdges sig (LoopingTree terms _) = HS.foldr part HS.empty terms
 -- --     ENDIF
 -- --   ENDFOR
 -- --
--- excisable :: Double -> LLeaf -> Maybe LLeaf
+-- excisable :: Double -> Leaf -> Maybe Leaf
 -- excisable sig ll = go (getAncestors ll)
 --   where
---     go :: [LLeaf] -> Maybe LLeaf
+--     go :: [Leaf] -> Maybe Leaf
 --     go [] = Nothing
 --     go (a:as)
 --       | Prob.matches ll a sig = Just a
 --       | otherwise = go as
 
-excisable :: Double -> LLeaf -> Maybe LLeaf
-excisable sig (LLeaf (Left _) _ _) = Nothing
-excisable sig ll@(LLeaf (Right (LLeafBody hs fs)) _ _) = go $ getAncestors ll
+excisable :: Double -> Leaf -> Maybe Leaf
+excisable sig (Leaf (Left _) _ _) = Nothing
+excisable sig ll@(Leaf (Right (LeafBody hs fs)) _ _) = go $ getAncestors ll
   where
-    go :: [LLeaf] -> Maybe LLeaf
+    go :: [Leaf] -> Maybe Leaf
     go [] = Nothing
     go (a:as) = case body a of
       Left _ -> Nothing
-      Right (LLeafBody hs' fs') ->
+      Right (LeafBody hs' fs') ->
         if Prob.matchesDists_ fs fs' sig
         then Just a
         else go as
 
 -- | returns ancestors in order of how they should be processed
-getAncestors :: LLeaf -> [LLeaf]
+getAncestors :: Leaf -> [Leaf]
 getAncestors ll = go (Just ll) []
   where
-    go :: Maybe LLeaf -> [LLeaf] -> [LLeaf]
+    go :: Maybe Leaf -> [Leaf] -> [Leaf]
     go  Nothing ancestors = ancestors
     go (Just w) ancestors = do
       go (parent w) (w:ancestors)

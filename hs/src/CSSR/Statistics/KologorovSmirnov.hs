@@ -1,4 +1,4 @@
-module Data.Statistics.KologorovSmirnov where
+module CSSR.Statistics.KologorovSmirnov where
 
 import CSSR.Prelude
 import Control.Exception

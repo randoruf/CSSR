@@ -17,4 +17,5 @@ hosts
 .stack-work
 codex.tags
 *.out
+*.bk
 lib

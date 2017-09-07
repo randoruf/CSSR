@@ -46,14 +46,13 @@ library
       CSSR.Internal
       CSSR.Prelude
       CSSR.Prelude.Mutable
-      Data.CSSR.Alphabet
-      Data.CSSR.Leaf.Probabilistic
-      Data.CSSR.Test
+      CSSR.Probabilistic
+      CSSR.Statistics.EntropyRate
+      CSSR.Statistics.F1
+      CSSR.Statistics.KologorovSmirnov
+      Data.Alphabet
       Data.MTree.Looping
       Data.MTree.Parse
-      Data.Statistics.Entropy.Rate
-      Data.Statistics.F1
-      Data.Statistics.KologorovSmirnov
       Data.Tree.Hist
       Data.Tree.Looping
       Data.Tree.Parse

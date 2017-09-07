@@ -4,7 +4,7 @@ import qualified Data.Vector as V
 
 import CSSR.Prelude.Test
 import Data.Tree.Hist
-import qualified Data.MTree.Parse as MParse
+import qualified Data.MTree.Parse as MParse (getAlphabet, buildTree)
 import qualified Data.Tree.Parse as Parse
 
 main :: IO ()
@@ -40,13 +40,13 @@ spec = do
       it ("fails to find node " ++ show path) $
         isNothing . navigate tree . V.fromList $ path
 
-    findNode :: [Event] -> Maybe HLeaf
+    findNode :: [Event] -> Maybe Leaf
     findNode path = navigate tree . V.fromList $ path
 
     ptree :: Parse.Tree
-    ptree = M.buildTree 2 (V.fromList $ (:"") <$> "abcc")
+    ptree = MParse.buildTree 2 (V.fromList $ (:"") <$> "abcc")
 
-    tree :: HistTree
+    tree :: Tree
     tree = convert ptree (MParse.getAlphabet ptree)
 
 

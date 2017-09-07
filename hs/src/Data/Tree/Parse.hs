@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE DeriveGeneric #-}
 module Data.Tree.Parse where
 
 import Data.List
@@ -17,7 +18,7 @@ import CSSR.Prelude
 data Tree = Tree
   { depth :: Int
   , root :: Leaf
-  } deriving (Eq)
+  } deriving (Eq, Generic)
 
 rootL :: Lens' Tree Leaf
 rootL = lens root $ \lf a -> lf { root = a }
@@ -33,7 +34,7 @@ instance Show Tree where
 data Leaf = Leaf
   { body :: LeafBody
   , children :: HashMap Event Leaf
-  } deriving (Eq)
+  } deriving (Eq, Generic)
 
 bodyL :: Lens' Leaf LeafBody
 bodyL = lens body $ \lf a -> lf { body = a }
@@ -67,7 +68,7 @@ data LeafBody = LeafBody
   { obs       :: Vector Event
   , count     :: Integer
   , locations :: Locations
-  } deriving (Eq)
+  } deriving (Eq, Generic)
 
 mkBody :: Monad m => Vector Event -> m Integer -> Locations -> m LeafBody
 mkBody o mc l = (LeafBody o) <$> mc <*> pure l

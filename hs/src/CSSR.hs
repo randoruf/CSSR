@@ -5,12 +5,12 @@
 -------------------------------------------------------------------------------
 module CSSR where
 
+import qualified Data.Tree.Looping as Looping (Tree)
 import qualified Data.Vector as V
-import qualified Data.Parse.MTree as M
-import qualified Data.Parse.Tree as P
-import Data.Hist.Tree
-import Data.Looping.Tree (LoopingTree)
-import qualified Data.Parse.MTree as MHist
+import qualified Data.MTree.Parse as M
+import qualified Data.Tree.Parse as P
+import qualified Data.Tree.Hist as Hist
+import qualified Data.MTree.Parse as MHist
 import Debug.Trace
 
 
@@ -29,9 +29,9 @@ main filepath = do
 --
 -- FIXME: Currently only works with characters
 -------------------------------------------------------------------------------
-initialization :: Int -> [Char] -> HistTree
+initialization :: Int -> [Char] -> Hist.Tree
 initialization depth (fmap (:[]) -> s) =
-  convert parseTree $ M.getAlphabet parseTree
+  Hist.convert parseTree $ M.getAlphabet parseTree
   where
     parseTree :: P.Tree
     parseTree = M.buildTree depth . V.fromList $ s
@@ -69,7 +69,7 @@ initialization depth (fmap (:[]) -> s) =
 --   ENDIF
 --
 -------------------------------------------------------------------------------
-grow :: HistTree -> LoopingTree
+grow :: Hist.Tree -> Looping.Tree
 grow htree = go (root htree) (mkActiveQueue htree)
   where
     root = undefined
@@ -121,9 +121,9 @@ grow htree = go (root htree) (mkActiveQueue htree)
 --   + if we let a terminal node's distribution override another terminal node's
 --       distribution (via subtree) will order matter?
 -------------------------------------------------------------------------------
-refine :: LoopingTree -> LoopingTree
+refine :: Looping.Tree -> Looping.Tree
 refine ltree' = go False ltree'
   where
-    go :: Bool -> LoopingTree -> LoopingTree
+    go :: Bool -> Looping.Tree -> Looping.Tree
     go stillDirty ltree = undefined
 

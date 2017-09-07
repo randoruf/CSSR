@@ -1,6 +1,4 @@
-module Data.Statistics.Entropy.Rate where
-
-import Data.Function
+module CSSR.Statistics.EntropyRate where
 
 type Probability = Double
 type Frequency = Integer

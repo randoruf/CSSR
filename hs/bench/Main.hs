@@ -1,29 +1,27 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE StandaloneDeriving #-}
-
 module Main where
 
-import GHC.Generics
-import Criterion
-import Criterion.Main
+import Criterion (Benchmark)
+import Criterion.Main (defaultMain, env, nf, bench)
+import Control.DeepSeq (NFData)
+import Control.Exception ()
+
+import CSSR.Prelude (Event)
 import qualified Data.Vector as V
-import Data.Parse.Tree
-import Control.DeepSeq
-import Control.Exception
+import qualified Data.MTree.Parse as MParse
+import qualified Data.Tree.Parse  as Parse
 
 main :: IO ()
-main = defaultMain $ fmap tester [10000]-- [500,1000..10000]
+main = defaultMain $ fmap tester [10000] -- [500,1000..10000]
   where
-    test :: Int -> V.Vector Char -> Benchmark
-    test count vec = bench ("buildTree " ++ show count) $ nf (buildTree 10) vec
+    test :: Int -> V.Vector Event -> Benchmark
+    test c vec = bench ("buildTree " ++ show c) $ nf (MParse.buildTree 10) vec
 
-    tester count = env (pure $ V.replicate count '1') (test count)
+    tester :: Int -> Benchmark
+    tester c = env (pure $ V.replicate c "1") (test c)
 
 
-deriving instance Generic ParseTree
-instance NFData ParseTree
-deriving instance Generic PLeaf
-instance NFData PLeaf
-deriving instance Generic PLeafBody
-instance NFData PLeafBody
+instance NFData Parse.Tree
+instance NFData Parse.Leaf
+instance NFData Parse.LeafBody
 
