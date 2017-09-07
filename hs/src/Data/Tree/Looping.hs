@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Data.Looping.Tree where
+module Data.Tree.Looping where
 
 import qualified Data.HashSet as HS
 import qualified Data.HashMap.Strict as HM

@@ -12,11 +12,12 @@ copyright:   2016-2017
 ghc-options: -fno-warn-name-shadowing
 
 default-extensions:
-  #  - NoImplicitPrelude # maybe we can use subhask at some point
   - MultiParamTypeClasses
   - OverloadedStrings
   - PatternSynonyms
   - TypeFamilies
+  - ViewPatterns
+  - LambdaCase
 
 dependencies:
   - base

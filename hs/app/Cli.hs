@@ -1,7 +1,8 @@
 module Cli where
 
 import Options.Applicative
-import Data.List
+import Data.List (intercalate)
+import Data.Monoid ((<>))
 
 data Arguments = Arguments
   { alphabet :: FilePath -- ^ required

@@ -2,7 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE LambdaCase #-}
-module Data.Looping.MTree where
+module Data.MTree.Looping where
 
 import qualified Data.HashSet as HS
 import qualified Data.HashMap.Strict as HM

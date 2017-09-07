@@ -4,8 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE DeriveGeneric #-}
-
-module Data.Hist.Tree where
+module Data.Tree.Hist where
 
 import Data.List
 import qualified Data.HashMap.Strict as HM
@@ -16,7 +15,7 @@ import GHC.Generics (Generic)
 import Data.Hashable
 
 import Data.CSSR.Leaf.Probabilistic
-import Data.Parse.Tree (ParseTree(..), PLeaf(..), PLeafBody(..))
+import qualified Data.Parse.Tree as P
 import qualified Data.Parse.Tree as Parse
 import Data.CSSR.Alphabet
 import CSSR.Prelude
@@ -81,25 +80,25 @@ instance Probabilistic HLeaf where
 -- Convert ParseTree to HistTree
 -------------------------------------------------------------------------------
 
-convert :: ParseTree -> Alphabet -> HistTree
-convert (ParseTree d rt) alpha = HistTree d alpha (go d rt)
+convert :: P.Tree -> Alphabet -> HistTree
+convert (P.Tree d rt) alpha = HistTree d alpha (go d rt)
   where
-    go :: Int -> PLeaf -> HLeaf
+    go :: Int -> P.Leaf -> HLeaf
     go 0 lf = mkHLeaf lf mempty
-    go d lf = mkHLeaf lf $ HM.map (go (d-1)) (view Parse.children lf)
+    go d lf = mkHLeaf lf $ HM.map (go (d-1)) (view P.childrenL lf)
 
-    mkHLeaf :: PLeaf -> HashMap Event HLeaf -> HLeaf
-    mkHLeaf (PLeaf (PLeafBody o _ _) cs) = HLeaf (mkBody o cs)
+    mkHLeaf :: P.Leaf -> HashMap Event HLeaf -> HLeaf
+    mkHLeaf (P.Leaf (P.LeafBody o _ _) cs) = HLeaf (mkBody o cs)
 
-    mkBody :: Vector Event -> HashMap Event PLeaf -> HLeafBody
+    mkBody :: Vector Event -> HashMap Event P.Leaf -> HLeafBody
     mkBody o cs = HLeafBody o (mkFrequency cs alpha)
 
-    mkFrequency :: HashMap Event PLeaf -> Alphabet -> Vector Integer
+    mkFrequency :: HashMap Event P.Leaf -> Alphabet -> Vector Integer
     mkFrequency cs (Alphabet vec _) =
       V.map (\s -> (maybe 0 getCounts . HM.lookup s) cs) vec
 
-    getCounts :: PLeaf -> Integer
-    getCounts = view (Parse.body . Parse.count)
+    getCounts :: P.Leaf -> Integer
+    getCounts = view (P.bodyL . P.countL)
 
 
 -------------------------------------------------------------------------------

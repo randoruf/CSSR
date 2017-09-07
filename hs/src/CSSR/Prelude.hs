@@ -2,6 +2,11 @@
 module CSSR.Prelude
   ( module X
   , groupBy
+  , Locations
+  , Idx
+  , Event
+  , Delim
+  , DataFileContents
   ) where
 
 import Lens.Micro.Platform as X
@@ -10,6 +15,7 @@ import Debug.Trace         as X
 import Data.List           as X hiding (groupBy)
 import Data.Maybe          as X
 import Control.Exception   as X
+import Control.Arrow       as X
 import Data.Hashable       as X
 import Data.Vector         as X (Vector, (!))
 import Data.Function       as X (on)
@@ -22,10 +28,9 @@ import Debug.Trace         as X
 import Control.Exception   as X
 import Data.Hashable       as X
 
-import CSSR.TypeAliases as X
-
 
 import qualified Data.HashMap.Strict as HM
+import qualified Data.Vector         as V
 
 
 groupBy :: forall a b . (Hashable b, Eq b) => (a -> b) -> [a] -> [(b, [a])]
@@ -37,4 +42,15 @@ groupBy fn = HM.toList . foldr step mempty
         go :: Maybe [a] -> Maybe [a]
         go   Nothing = Just [a]
         go (Just as) = Just (a:as)
+
+
+type Locations = HashMap Idx Integer
+type Idx = Integer
+type Event = String
+type Delim = String
+type DataFileContents = Vector Event
+
+instance Hashable x => Hashable (Vector x) where
+  hashWithSalt salt = hashWithSalt salt . V.toList
+
 

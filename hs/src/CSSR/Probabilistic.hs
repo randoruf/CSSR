@@ -12,11 +12,23 @@ class Probabilistic leaf where
   distribution :: leaf -> Vector Double
   distribution = freqToDist . frequency
 
+  totalCounts :: a -> Integer
+  totalCounts a = foldr (+) 0 $ frequency a
+
+  totalCounts_ :: a -> Double
+  totalCounts_ = fromIntegral . totalCounts
+
   rounded :: leaf -> Vector Float
   rounded leaf = V.map (shorten 2) (distribution leaf)
     where
       shorten :: Int -> Double -> Float
       shorten n f = (fromInteger $ round $ f * (10^n)) / (10.0^^n)
+
+  distribution :: a -> Vector Double
+  distribution p = fmap ((/ total) . fromIntegral) . frequency $ p
+    where
+      total :: Double
+      total = totalCounts_ p
 
 matches :: (Probabilistic a, Probabilistic b) => a -> b -> Double -> Bool
 matches a b = matchesDists (probabilisticToTuple a) (probabilisticToTuple b)
@@ -53,5 +65,18 @@ unsafeMatch_ mvec0 mvec1 sig = do
   vec0 <- MV.basicUnsafeFreeze mvec0
   vec1 <- MV.basicUnsafeFreeze mvec1
   return $ kstwoTest_ vec0 vec1 sig
+
+
+test :: Probabilistic inst => inst -> inst -> Double -> Bool
+test state testCase sig = nullHypothesis state testCase >= sig
+
+
+nullHypothesis :: (Probabilistic empirical, Probabilistic test)
+               => empirical -> test -> Double
+nullHypothesis ss val = kstwo (countsAndDist ss) (countsAndDist val)
+  where
+    countsAndDist :: Probabilistic p => p -> (Integer, Vector Double)
+    countsAndDist = totalCounts &&& distribution
+
 
 
