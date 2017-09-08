@@ -56,6 +56,14 @@ tests:
       - hspec
       - QuickCheck
 
+  doctest:
+    main: DocTest.hs
+    source-dirs: test
+    dependencies:
+      - cssr
+      - doctest
+      - QuickCheck
+
 benchmarks:
   bench:
     source-dirs: bench

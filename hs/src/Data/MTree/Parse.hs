@@ -85,9 +85,9 @@ buildMTree n' (V.filter isValid -> cs) = do
 
     sliceEvents :: Int -> Vector Event
     sliceEvents i
-      | i + n  <= length cs = V.slice i n cs               -- ^get all children of depth
-      | i + n' <= length cs = V.slice i (length cs - i) cs -- ^but also the depth
-      | otherwise           = V.empty                      -- ^ignore all others
+      | i + n  <= length cs = V.slice i n cs               -- get all children of depth
+      | i + n' <= length cs = V.slice i (length cs - i) cs -- but also the depth
+      | otherwise           = V.empty                      -- ignore all others
 
 isValid :: Event -> Bool
 isValid e = not . HS.member e . HS.fromList $ ["\r", "\n"]

@@ -119,7 +119,7 @@ probks alam {-alam stands for "a lambda", I believe-}= go (V.fromList [1..100]) 
 
     go :: Vector Double -> Double -> Double -> Double -> Double
     go js' fac oldsum termBF
-      | V.null js' = 1         -- ^ Get here only by failing to converge.
+      | V.null js' = 1         -- Get here only by failing to converge.
       | (aterm <= eps1 * termBF) || (aterm  <= eps2 * newsum) = newsum
       | otherwise = go js (-1 * fac) newsum aterm
       where

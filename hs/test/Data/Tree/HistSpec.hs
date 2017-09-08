@@ -13,7 +13,7 @@ main = hspec spec
 spec :: Spec
 spec = do
   describe "navigate" $ do
-    findsJust [""]
+    findsJust []
     findsJust ["c"]
     findsNothing ["a"]
     findsNothing ["b"]
