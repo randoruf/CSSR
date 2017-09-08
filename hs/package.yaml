@@ -57,8 +57,7 @@ tests:
       - QuickCheck
 
   doctest:
-    main: DocTest.hs
-    source-dirs: test
+    main: doctest.hs
     dependencies:
       - cssr
       - doctest
