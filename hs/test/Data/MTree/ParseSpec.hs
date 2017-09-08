@@ -1,7 +1,10 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Data.MTree.ParseSpec where
 
 import Data.MTree.Parse
+
 import Data.Alphabet
+
 import qualified Data.Tree.Parse  as P
 import qualified Data.HashSet     as HS
 import qualified Data.Vector      as V
@@ -9,6 +12,7 @@ import qualified Data.Text        as T
 
 import CSSR.Prelude.Mutable
 import CSSR.Prelude.Test
+import Test.QuickCheck (property)
 
 main :: IO ()
 main = hspec spec
@@ -16,6 +20,7 @@ main = hspec spec
 spec :: Spec
 spec = do
   describe "addPath"     addPathSpec
+  describe "addPath_"    addPath_Spec
   describe "buildTree"   buildTreeSpec
   describe "getAlphabet" alphabetSpec
 
@@ -24,6 +29,7 @@ spec = do
 addPathSpec :: Spec
 addPathSpec =
   describe "when we encounter the history 110" $ do
+    let rt = runST $ mkLeaf (addPath (V.fromList $ T.singleton <$> "110"))
     it "keeps the root node" $ view (P.bodyL . P.obsL) rt == V.empty
     it "bumps the root node count" $ view (P.bodyL . P.countL) rt == 1
 
@@ -35,12 +41,23 @@ addPathSpec =
     let _10 = findLeaf _0 "1"
     childChecks (show "10") _10 "1" (V.fromList $ T.singleton <$> "110") 1
 
-  where
-    rt :: P.Leaf
-    rt = runST $ freeze =<< do
-      rt' <- newRoot
-      addPath (V.fromList $ T.singleton <$> "110") rt'
-      return rt'
+
+addPath_Spec :: SpecWith (Arg Bool)
+addPath_Spec =
+  it "is identical to addPath of a String" $ property $ \str ->
+    let
+      lp  = runST $ mkLeaf (addPath (V.fromList $ fmap T.singleton str))
+      lp' = runST $ mkLeaf (addPath_ (T.pack str))
+    in
+      lp == lp'
+
+
+mkLeaf :: (MLeaf s -> ST s ()) -> ST s P.Leaf
+mkLeaf mutate = freeze =<< do
+  r <- newRoot
+  mutate r
+  pure r
+
 
 -------------------------------------------------------------------------------
 

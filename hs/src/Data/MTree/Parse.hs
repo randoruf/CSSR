@@ -7,9 +7,10 @@ import Control.Monad
 import Data.Alphabet
 import qualified Data.Tree.Parse as P
 
+import qualified Data.Text             as T
 import qualified Data.HashSet          as HS (member, fromList, union)
 import qualified Data.HashMap.Strict   as HM (insert, toList)
-import qualified Data.Vector           as V (empty, length, drop, filter, slice)
+import qualified Data.Vector           as V (empty, length, drop, filter, slice, fromList)
 import qualified Data.HashTable.Class  as H (new, lookup, insert, toList)
 
 
@@ -32,11 +33,31 @@ newLeaf :: Vector Event -> ST s (MLeaf s)
 newLeaf = mkMLeaf 1
 
 ---------------------------------------------------------------------------------
--- We encounter the history say "110"
--- We go to the parse tree at the root
--- We take the 0 child of the root
--- We then take the 1 child of 0 (=10)
--- We then take the 1 child of 10 (=110)
+-- |
+-- Here's a given scenario:
+--  * We encounter the history say "110"
+--  * We go to the parse tree at the root
+--  * We take the 0 child of the root
+--  * We then take the 1 child of 0 (=10)
+--  * We then take the 1 child of 10 (=110)
+--
+-- Examples
+-- >>> :{
+-- let node = runST $ do
+--      r <- newRoot
+--      addPath_ "110" r
+--      freeze r
+-- in
+--   node
+-- :}
+-- <BLANKLINE>
+--      " "->PLeaf{obs: [], count: 1, ls: <>}
+--           children:
+--           "0"->PLeaf{obs: ["0"], count: 1, ls: <>}
+--                children:
+--                "1"->PLeaf{obs: ["1","0"], count: 1, ls: <>}
+--                     children:
+--                     "1"->PLeaf{obs: ["1","1","0"], count: 1, ls: <>, no children}
 --------------------------------------------------------------------------------
 addPath :: Vector Event -> MLeaf s -> ST s ()
 addPath events = walk (V.length events)
@@ -59,6 +80,9 @@ addPath events = walk (V.length events)
       H.insert (children l) (events ! dp') lf
       mkLf dp' lf
 
+-- | helper function for addPath
+addPath_ :: Text -> MLeaf s -> ST s ()
+addPath_ (V.fromList . fmap T.singleton . T.unpack->evt) = addPath evt
 
 freeze :: forall s . MLeaf s -> ST s P.Leaf
 freeze MLeaf{obs, count, children} = P.Leaf

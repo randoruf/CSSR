@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 module Data.Alphabet where
 
 import qualified Data.HashMap.Strict as HM
@@ -7,11 +8,11 @@ import qualified Data.Vector as V
 
 import CSSR.Prelude
 
--- | For the moment, an alphabet only consists of symbols of Chars
 data Alphabet = Alphabet
   { idxToSym :: Vector Event
   , symToIdx :: HashMap Event Int
-  } deriving (Eq, Generic)
+  } deriving (Eq, Generic, Hashable)
+
 
 mkAlphabet :: HashSet Event -> Alphabet
 mkAlphabet alphas = Alphabet (V.fromList list) (HM.fromList $ zip list [0..])
@@ -19,12 +20,11 @@ mkAlphabet alphas = Alphabet (V.fromList list) (HM.fromList $ zip list [0..])
     list :: [Event]
     list = HS.toList alphas
 
+
 instance Show Alphabet where
   -- a little convoluted in the case of strings
-  show (Alphabet vec _) = "alphabet: [" ++ alphaList ++ "]"
+  show (Alphabet vec _) = "Alphabet: [" ++ alphaList ++ "]"
     where
       alphaList :: String
       alphaList = intercalate "," (map show . V.toList $ vec)
-
-instance Hashable Alphabet
 

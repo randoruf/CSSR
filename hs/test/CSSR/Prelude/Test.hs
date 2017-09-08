@@ -1,14 +1,10 @@
 module CSSR.Prelude.Test
-  ( module CSSR.Prelude
-  , module Test.Hspec
-  , module Test.Hspec.QuickCheck
-  , module Data.Maybe
+  ( module X
   )
   where
 
-import Data.Maybe
-import Test.Hspec
-import Test.Hspec.QuickCheck
-
-import CSSR.Prelude
+import Data.Maybe as X
+import Test.Hspec as X
+import Test.Hspec.QuickCheck as X
+import CSSR.Prelude as X
 

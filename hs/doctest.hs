@@ -7,6 +7,7 @@ main = doctest
   , "-XTypeFamilies"
   , "-XLambdaCase"
   , "-XViewPatterns"
+  , "-XOverloadedStrings"
   ]
 
 
