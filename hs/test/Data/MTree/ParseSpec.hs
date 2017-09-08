@@ -2,9 +2,10 @@ module Data.MTree.ParseSpec where
 
 import Data.MTree.Parse
 import Data.Alphabet
-import qualified Data.Tree.Parse as P
-import qualified Data.HashSet as HS
-import qualified Data.Vector as V
+import qualified Data.Tree.Parse  as P
+import qualified Data.HashSet     as HS
+import qualified Data.Vector      as V
+import qualified Data.Text        as T
 
 import CSSR.Prelude.Mutable
 import CSSR.Prelude.Test
@@ -26,19 +27,19 @@ addPathSpec =
     it "keeps the root node" $ view (P.bodyL . P.obsL) rt == V.empty
     it "bumps the root node count" $ view (P.bodyL . P.countL) rt == 1
 
-    childChecks "root" rt "0" (V.fromList $ (:"") <$> "0") 1
+    childChecks "root" rt "0" (V.fromList $ T.singleton <$> "0") 1
 
     let _0 = findLeaf rt "0"
-    childChecks (show "0") _0 "1" (V.fromList $ (:"") <$> "10") 1
+    childChecks (show "0") _0 "1" (V.fromList $ T.singleton <$> "10") 1
 
     let _10 = findLeaf _0 "1"
-    childChecks (show "10") _10 "1" (V.fromList $ (:"") <$> "110") 1
+    childChecks (show "10") _10 "1" (V.fromList $ T.singleton <$> "110") 1
 
   where
     rt :: P.Leaf
     rt = runST $ freeze =<< do
       rt' <- newRoot
-      addPath (V.fromList $ (:"") <$> "110") rt'
+      addPath (V.fromList $ T.singleton <$> "110") rt'
       return rt'
 
 -------------------------------------------------------------------------------
@@ -46,7 +47,7 @@ addPathSpec =
 buildTreeSpec :: Spec
 buildTreeSpec = do
   describe "when we build the tree \"abcc\" with depth 2" $ do
-    let tree = buildTree 2 (V.fromList $ (:"") <$> "abcc")
+    let tree = buildTree 2 (V.fromList $ T.singleton <$> "abcc")
     it "the tree has depth 2" $
       view P.depthL tree == 2
 
@@ -58,23 +59,23 @@ buildTreeSpec = do
     noChildTest "root" rt "b"
 
     let _c = findLeaf rt "c"
-    childChecks (show "c") _c "b" (V.fromList $ (:"") <$> "bc") 1
-    childChecks (show "c") _c "c" (V.fromList $ (:"") <$> "cc") 1
+    childChecks (show "c") _c "b" (V.fromList $ T.singleton <$> "bc") 1
+    childChecks (show "c") _c "c" (V.fromList $ T.singleton <$> "cc") 1
 
     let _cc = findLeaf _c "c"
-    childChecks (show "cc") _cc "b" (V.fromList $ (:"") <$> "bcc") 1
+    childChecks (show "cc") _cc "b" (V.fromList $ T.singleton <$> "bcc") 1
 
     noChildrenTest (show "bcc") $ findLeaf _cc "b"
 
     let _bc = findLeaf _c "b"
-    childChecks (show "bc") _bc "a" (V.fromList $ (:"") <$> "abc") 1
+    childChecks (show "bc") _bc "a" (V.fromList $ T.singleton <$> "abc") 1
     noChildrenTest (show "abc") $ findLeaf _bc "a"
 
 alphabetSpec :: Spec
 alphabetSpec =
   it "building a tree from \"abcc\" finds the correct alphabet" $ do
-    let alpha = getAlphabet $ buildTree 2 (V.fromList $ (:"") <$> "abcc")
-    V.all (\s -> HS.member s $ HS.fromList  $ (:"") <$> "abc") (idxToSym alpha)
+    let alpha = getAlphabet $ buildTree 2 (V.fromList $ T.singleton <$> "abcc")
+    V.all (\s -> HS.member s $ HS.fromList  $ T.singleton <$> "abc") (idxToSym alpha)
 
 -------------------------------------------------------------------------------
 -- Helper functions

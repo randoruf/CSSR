@@ -7,12 +7,15 @@
 -------------------------------------------------------------------------------
 module CSSR.Algorithm.Phase1 where
 
-import qualified Data.Tree.Looping as Looping (Tree)
-import qualified Data.Vector as V
-import qualified Data.MTree.Parse as M
-import qualified Data.Tree.Parse as P
-import qualified Data.Tree.Hist as Hist
-import qualified Data.MTree.Parse as MHist
+import qualified Data.Text    as T
+import qualified Data.Vector  as V
+
+import qualified Data.Tree.Looping  as Looping (Tree)
+import qualified Data.MTree.Parse   as M
+import qualified Data.Tree.Parse    as P
+import qualified Data.Tree.Hist     as Hist
+import qualified Data.MTree.Parse   as MHist
+
 import Debug.Trace
 
 
@@ -49,7 +52,7 @@ import Debug.Trace
 -- FIXME: Currently only works with characters
 -------------------------------------------------------------------------------
 initialization :: Int -> [Char] -> Hist.Tree
-initialization depth (fmap (:[]) -> s) =
+initialization depth (fmap T.singleton -> s) =
   Hist.convert parseTree $ M.getAlphabet parseTree
   where
     parseTree :: P.Tree

@@ -2,6 +2,7 @@
 module CSSR.Prelude
   ( module X
   , groupBy
+  , identity
   , Locations
   , Idx
   , Event
@@ -9,7 +10,9 @@ module CSSR.Prelude
   , DataFileContents
   ) where
 
+import Prelude             as X hiding (id)
 import Lens.Micro.Platform as X
+import Lens.Micro.Internal as X
 import Data.Monoid         as X
 import Debug.Trace         as X
 import Data.List           as X hiding (groupBy)
@@ -20,6 +23,7 @@ import Data.Hashable       as X
 import Data.Vector         as X (Vector, (!))
 import Data.Function       as X (on)
 import Data.Sequence       as X (Seq)
+import Data.Text           as X (Text)
 import Data.Foldable       as X
 import Data.HashSet        as X (HashSet)
 import Data.HashMap.Strict as X (HashMap)
@@ -31,7 +35,10 @@ import Data.Hashable       as X
 
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Vector         as V
+import qualified Prelude             as P
 
+identity :: a -> a
+identity = P.id
 
 groupBy :: forall a b . (Hashable b, Eq b) => (a -> b) -> [a] -> [(b, [a])]
 groupBy fn = HM.toList . foldr step mempty
@@ -46,8 +53,8 @@ groupBy fn = HM.toList . foldr step mempty
 
 type Locations = HashMap Idx Integer
 type Idx = Integer
-type Event = String
-type Delim = String
+type Event = Text
+type Delim = Text
 type DataFileContents = Vector Event
 
 instance Hashable x => Hashable (Vector x) where

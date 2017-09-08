@@ -1,6 +1,7 @@
 module Data.Tree.HistSpec where
 
 import qualified Data.Vector as V
+import qualified Data.Text as T
 
 import CSSR.Prelude.Test
 import Data.Tree.Hist
@@ -23,9 +24,9 @@ spec = do
 
   describe "convert" $ do
     it "removes the last children from a Parse Tree" $
-      all (isNothing . navigate tree . V.fromList) $ (fmap.fmap) (:[]) ["abc", "bcc"]
+      all (isNothing . navigate tree . V.fromList) $ (fmap.fmap) T.singleton ["abc", "bcc"]
     it "keeps the children of last depth" $
-      all (isJust . navigate tree . V.fromList) $ (fmap.fmap) (:[]) ["bc", "cc"]
+      all (isJust . navigate tree . V.fromList) $ (fmap.fmap) T.singleton ["bc", "cc"]
 
   where
     findsJust :: [Event] -> Spec
@@ -44,7 +45,7 @@ spec = do
     findNode path = navigate tree . V.fromList $ path
 
     ptree :: Parse.Tree
-    ptree = MParse.buildTree 2 (V.fromList $ (:"") <$> "abcc")
+    ptree = MParse.buildTree 2 (V.fromList $ T.singleton <$> "abcc")
 
     tree :: Tree
     tree = convert ptree (MParse.getAlphabet ptree)
