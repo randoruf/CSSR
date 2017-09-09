@@ -219,8 +219,7 @@ getAncestors ll = go (Just ll) []
   where
     go :: Maybe Leaf -> [Leaf] -> [Leaf]
     go  Nothing ancestors = ancestors
-    go (Just w) ancestors = do
-      go (parent w) (w:ancestors)
+    go (Just w) ancestors = go (parent w) (w:ancestors)
 
 
 

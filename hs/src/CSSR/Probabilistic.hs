@@ -10,6 +10,9 @@ import Control.Monad.Primitive
 class Probabilistic leaf where
   frequency :: leaf -> Vector Integer
 
+  frequency_ :: Monad m => leaf -> m (Vector Integer)
+  frequency_ = pure . frequency
+
 distribution :: Probabilistic leaf => leaf -> Vector Double
 distribution = freqToDist . frequency
 

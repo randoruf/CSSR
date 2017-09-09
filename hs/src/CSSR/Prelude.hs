@@ -10,28 +10,25 @@ module CSSR.Prelude
   , DataFileContents
   ) where
 
-import Prelude             as X hiding (id)
-import Lens.Micro.Platform as X
-import Lens.Micro.Internal as X
-import Data.Monoid         as X
-import Debug.Trace         as X
+import Control.Arrow       as X
+import Control.Exception   as X
+import Control.Monad       as X
+import Data.Foldable       as X
+import Data.Function       as X (on)
 import Data.List           as X hiding (groupBy)
 import Data.Maybe          as X
-import Control.Exception   as X
-import Control.Arrow       as X
+import Data.Monoid         as X
 import Data.Hashable       as X
-import Data.Vector         as X (Vector, (!))
-import Data.Function       as X (on)
+import Data.HashMap.Strict as X (HashMap)
+import Data.HashSet        as X (HashSet)
 import Data.Sequence       as X (Seq)
 import Data.Text           as X (Text)
-import Data.Foldable       as X
-import Data.HashSet        as X (HashSet)
-import Data.HashMap.Strict as X (HashMap)
-import GHC.Generics        as X (Generic)
+import Data.Vector         as X (Vector, (!))
 import Debug.Trace         as X
-import Control.Exception   as X
-import Data.Hashable       as X
-
+import GHC.Generics        as X (Generic)
+import Lens.Micro.Platform as X
+import Lens.Micro.Internal as X
+import Prelude             as X hiding (id)
 
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Vector         as V

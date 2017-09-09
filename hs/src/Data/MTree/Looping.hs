@@ -1,26 +1,26 @@
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE LambdaCase #-}
 module Data.MTree.Looping where
 
-import qualified Data.HashSet as HS
-import qualified Data.HashMap.Strict as HM
-import qualified Data.Vector as V
-import qualified Data.Sequence as S
-import qualified Data.Vector.Mutable as MV
-import qualified Data.Vector.Generic as GV
-import qualified Data.HashTable.ST.Cuckoo as C
-import qualified Data.HashTable.Class as H
-import Data.Foldable
-
 import CSSR.Prelude.Mutable
 import Data.Alphabet
-import qualified Data.Tree.Hist as Hist
-
 import CSSR.Probabilistic (Probabilistic)
-import qualified CSSR.Probabilistic as Prob
-import qualified Data.Tree.Looping as L
+
+import qualified CSSR.Probabilistic  as Prob
+import qualified Data.Tree.Hist      as Hist
+import qualified Data.Tree.Looping   as L
+
+import qualified Data.HashSet              as HS
+import qualified Data.HashMap.Strict       as HM
+import qualified Data.Vector               as V
+import qualified Data.Sequence             as S
+import qualified Data.Vector.Mutable       as MV
+import qualified Data.Vector.Generic       as GV
+import qualified Data.HashTable.ST.Cuckoo  as C
+import qualified Data.HashTable.Class      as H
 
 -------------------------------------------------------------------------------
 -- Mutable Looping Tree ADTs
@@ -28,14 +28,16 @@ import qualified Data.Tree.Looping as L
 type HashTableSet s a = C.HashTable s a Bool
 
 data MLeaf s = MLeaf
-  -- | for lack of a mutable hash set implementation
+  -- for lack of a mutable hash set implementation
   { histories :: HashTableSet s Hist.Leaf
   , frequency :: MVector s Integer
   , children :: C.HashTable s Event (MLNode s)
   , parent :: STRef s (Maybe (MLeaf s))
+  , hasEdgeset :: STRef s Bool
   }
 
 type Loop s = MLeaf s
+
 type MLNode s = Either (Loop s) (MLeaf s)
 
 overlaps :: forall s . MLeaf s -> MLeaf s -> ST s Bool
@@ -61,8 +63,7 @@ freeze :: forall s . Double -> MLeaf s -> ST s L.Leaf
 freeze sig ml = do
   hs <- freezeHistories ml
   f  <- V.freeze . frequency $ ml
-  cs' <- H.toList . children $ ml
-  cs <- freezeDown cs'
+  cs <- freezeDown =<< (H.toList . children $ ml)
   let cur = L.Leaf (Right (L.LeafBody hs f)) cs Nothing
   return $ withChilds cur (HM.map (withParent (Just cur)) cs)
 
@@ -94,14 +95,13 @@ freeze sig ml = do
 
 
 mkLeaf :: Maybe (MLeaf s) -> [Hist.Leaf] -> ST s (MLeaf s)
-mkLeaf p' hs' = do
-  il <- newSTRef Nothing
-  hs <- H.fromList $ fmap (, True) hs'
-  let v = foldr1 Prob.addFrequencies $ fmap (view (Hist.body . Hist.frequency)) hs'
-  mv <- GV.thaw v
-  cs <- H.new
-  p <- newSTRef p'
-  return $ MLeaf hs mv cs p
+mkLeaf p hs =
+  MLeaf
+    <$> H.fromList (fmap (, True) hs)
+    <*> GV.thaw (foldr1 Prob.addFrequencies $ fmap (view (Hist.body . Hist.frequency)) hs)
+    <*> H.new
+    <*> newSTRef p
+    <*> newSTRef False
 
 mkRoot :: Alphabet -> Hist.Leaf -> ST s (MLeaf s)
 mkRoot (Alphabet vec _) hrt =
@@ -110,153 +110,54 @@ mkRoot (Alphabet vec _) hrt =
     <*> MV.replicate (V.length vec) 0
     <*> H.new
     <*> newSTRef Nothing
+    <*> newSTRef False
 
 walk :: forall s . MLNode s -> Vector Event -> ST s (Maybe (MLNode s))
 walk cur es
-  | null es = return $ Just cur
-  | otherwise = do
-    f <- H.lookup (children (reify cur)) (V.head es)
-    case f of
+  | null es   = pure (Just cur)
+  | otherwise =
+    H.lookup (children (reify cur)) (V.head es)
+    >>= \case
       Nothing -> return Nothing
-      Just nxt -> walk nxt (V.tail es)
+      Just n  -> walk n (V.tail es)
   where
     reify :: MLNode s -> MLeaf s
     reify (Left  l) = l
     reify (Right l) = l
 
--------------------------------------------------------------------------------
--- | == Phase II: "Growing a Looping Tree" algorithm
---
--- INIT root looping node
--- INIT queue of active, unchecked nodes
--- QUEUE root
--- WHILE queue is not empty
---   DEQUEUE first looping node from the queue
---   COMPUTE homogeneity(dequeued looping node, parse tree)
---   IF node is homogeneous
---   THEN continue
---   ELSE
---     CONSTRUCT new looping nodes for all valid children (one for each symbol in
---               alphabet - must have empirical observation in dataset).
---     FOR each new node constructed
---       COMPUTE excisability(node, looping tree)
---       ADD all new looping nodes to children of active node (mapped by symbol)
---       ADD unexcisable children to queue (FIXME: what about edgesets?)
---   ENDIF
--- ENDWHILE
--------------------------------------------------------------------------------
-grow :: forall s . Double -> Hist.Tree -> ST s (MLeaf s)
-grow sig (Hist.Tree _ a hRoot) = do
-  rt <- mkRoot a hRoot   -- ^ INIT root looping node
-  ts <- newSTRef [rt]    -- ^ INIT queue of active, unchecked nodes
-                         --   QUEUE root
-  go (S.singleton rt) ts
-  return rt
-  where
-    go :: Seq (MLeaf s) -> STRef s [MLeaf s] -> ST s ()
-    go queue termsRef             -- ^ DEQUEUE first looping node from the queue
-      | S.null queue = return ()
-      | otherwise = do            -- ^ WHILE queue is not empty
-        terms <- readSTRef termsRef
-        isH <- isHomogeneous sig active
-        if isH
-        then go next termsRef
-        else do
-          cs' <- nextChilds
-          let cs'' = fmap snd cs'
-          -- COMPUTE excisability(node, looping tree)
-          cs <- mapM (\(e, x) -> do
-            x' <- findLoops x
-            return (e, x')) cs'
-
-          forM_ cs (\(e, x) -> H.insert (children active) e x)
-          writeSTRef termsRef (cs'' <> delete active terms)
-          --   ADD all new looping nodes to children of active (mapped by symbol)
-          --   ADD unexcisable children to queue (FIXME: what about edgesets?)
-          go (next <> S.fromList cs'') termsRef
-
-      where
-        findLoops :: MLeaf s -> ST s (MLNode s)
-        findLoops ll =
-          excisable sig ll >>= \case
-            Nothing -> return $ Right ll
-            Just ex -> return $ Left ex
-
-        next :: Seq (MLeaf s)
-        (active', next) = S.splitAt 1 queue
-
-        active :: MLeaf s
-        active = S.index active' 0
-
-        -- CONSTRUCT new looping nodes for all valid children
-        --    (one for each symbol in alphabet - must have empirical
-        --    observation in dataset).
-        nextChilds :: ST s [(Event, MLeaf s)]
-        nextChilds = do
-          hs <- (fmap.fmap) fst . H.toList . histories $ active
-          traverse (\(e, _hs) -> (e,) <$> mkLeaf (Just active) _hs) $ groupHistory hs
-
-        groupHistory :: [Hist.Leaf] -> [(Event, [Hist.Leaf])]
-        groupHistory = groupBy (V.head . view (Hist.body . Hist.obs))
 
 -------------------------------------------------------------------------------
 -- Predicates for the construction of a looping tree
 
--- | === isEdge
+-- | === MarkEdgeSets
 -- Psuedocode from paper:
---   INPUTS: looping node, looping tree
+--   INPUTS: looping node, all terminal nodes
 --   COLLECT all terminal nodes that are not ancestors
---   IF exists terminal nodes with identical distributions
+--   IF exists collected terminal nodes with identical distributions
 --   THEN
---     mark looping node as an edge set
---     mark found terminals as an edge set
+--     MARK looping node as an edge set
+--     MARK found terminals as an edge set
 --     // We will merge edgesets in Phase III.
 --   ENDIF
---
---type EdgeGroup s = (Vector Integer, HashSet (MLeaf s))
---
---groupEdges :: forall s . Double -> MLooping.Tree s -> ST s (HashSet (EdgeGroup s))
---groupEdges sig (MLooping.Tree terms _) = HS.foldr part (pure HS.empty) terms
---
---  where
---    --matchesDists_ :: Vector Integer -> Vector Integer -> Double -> Bool
---    --matchesDists_ = kstwoTest_
---
---    part :: MLeaf s -> ST s (HashSet (EdgeGroup s)) -> ST s (HashSet (EdgeGroup s))
---    part term groups' = do
---      groups <- groups'
---      found <- foundEdge
---      case found of
---        Nothing -> (\t -> HS.insert (t, HS.singleton term) groups) <$> termFreq
---        Just g  -> updateGroup g groups
---
---      where
---        termFreq :: ST s (Vector Integer)
---        termFreq = GV.basicUnsafeFreeze (frequency term)
---
---        updateGroup :: EdgeGroup s
---                    -> HashSet (EdgeGroup s)
---                    -> ST s (HashSet (EdgeGroup s))
---        updateGroup g@(f, ts) groups = do
---          summed <- summedST
---          return $ HS.insert (summed, HS.insert term ts) (HS.delete g groups)
---
---
---          where
---            summedST :: ST s (Vector Integer)
---            summedST = Prob.addFrequencies f <$> termFreq
---
---        foundEdge :: ST s (Maybe (EdgeGroup s))
---        foundEdge = do
---          groups <- groups'
---          foldrM matchEdges Nothing (HS.toList groups)
---
---        matchEdges :: EdgeGroup s
---                   -> Maybe (EdgeGroup s) -> ST s (Maybe (EdgeGroup s))
---        matchEdges _  g@(Just _) = return g
---        matchEdges g@(f, _) Nothing = do
---          matched <- Prob.unsafeMatch (frequency term) f sig
---          return (if matched then Just g else Nothing)
+markEdgeSets :: forall s . [MLeaf s] -> MLeaf s -> ST s ()
+markEdgeSets terminals leaf = do
+  edges <- edgeset =<< getAncestors leaf
+  unless (null edges) $ do
+    markEdge leaf
+    forM_ edges markEdge
+
+  where
+    markEdge :: MLeaf s -> ST s ()
+    markEdge lf = writeSTRef (hasEdgeset lf) True
+
+    identicalDist :: MLeaf s -> ST s Bool
+    identicalDist s = liftM2 (==) (distributionST leaf) (distributionST s)
+
+    edgeset :: [MLeaf s] -> ST s [MLeaf s]
+    edgeset ancestors = fmap nub . filterM identicalDist $ terminals \\ ancestors
+
+    distributionST :: MLeaf s -> ST s (Vector Double)
+    distributionST lf = Prob.freqToDist <$> V.freeze (frequency lf)
 
 
 -- | === Homogeneity
@@ -274,24 +175,17 @@ grow sig (Hist.Tree _ a hRoot) = do
 --
 isHomogeneous :: forall s . Double -> MLeaf s -> ST s Bool
 isHomogeneous sig ll = do
-  pcs <- allPChilds
-  foldrM step True pcs
-
+  hs <- (fmap.fmap) (view Hist.children . fst) ll'
+  foldrM step True $ HS.fromList (hs >>= HM.elems)
   where
-    allPChilds :: ST s (HashSet Hist.Leaf)
-    allPChilds = do
-      let hs :: ST s [(Hist.Leaf, Bool)]
-          hs = H.toList (histories ll)
-      kvs <- hs
-      let
-        cs :: [Hist.Leaf]
-        cs = (fst <$> kvs) >>= HM.elems . view Hist.children
-      return . HS.fromList $ cs
+    ll' :: ST s [(Hist.Leaf, Bool)]
+    ll' = H.toList (histories ll)
 
     step :: Hist.Leaf -> Bool -> ST s Bool
-    step _  False = return False
-    step pc _     =
-      Prob.unsafeMatch (frequency ll) (Prob.frequency pc) sig
+    step pc = \case
+      False -> pure False
+      True  -> Prob.unsafeMatch (frequency ll) (Prob.frequency pc) sig
+
 
 -- | === Excisability
 -- Psuedocode from paper:
@@ -307,26 +201,32 @@ isHomogeneous sig ll = do
 --     ENDIF
 --   ENDFOR
 --
+-- Examples:
+-- >>> import CSSR.Algorithm.Phase1
+-- >>> let ptree = initialization 2 short_ep
+-- >>> :{
+--
+-- :}
+-- >>> ptree
+--
 excisable :: forall s . Double -> MLeaf s -> ST s (Maybe (MLeaf s))
 excisable sig ll = getAncestors ll >>= go
   where
     go :: [MLeaf s] -> ST s (Maybe (MLeaf s))
-    go [] = return Nothing
-    go (a:as) = do
-      isMatch <- Prob.unsafeMatch_ (frequency ll) (frequency a) sig
-      if isMatch
-      then return (Just a)
-      else go as
+    go     [] = pure Nothing
+    go (a:as) = Prob.unsafeMatch_ (frequency ll) (frequency a) sig
+      >>= \case
+        True  -> pure (Just a)
+        False -> go as
 
--- | returns ancestors in order of how they should be processed
+-- |
+-- Returns ancestors in order of how they should be processed
 getAncestors :: MLeaf s -> ST s [MLeaf s]
-getAncestors ll = go (Just ll) []
+getAncestors = go [] . Just
   where
-    go :: Maybe (MLeaf s) -> [MLeaf s] -> ST s [MLeaf s]
-    go  Nothing ancestors = return ancestors
-    go (Just w) ancestors = do
-      p <- readSTRef (parent w)
-      go p (w:ancestors)
-
+    go :: [MLeaf s] -> Maybe (MLeaf s) -> ST s [MLeaf s]
+    go ancestors = \case
+      Nothing -> pure ancestors
+      Just w  -> readSTRef (parent w) >>= go (w:ancestors)
 
 

@@ -46,6 +46,7 @@ library
       CSSR.Algorithm.Phase1
       CSSR.Algorithm.Phase2
       CSSR.Algorithm.Phase3
+      CSSR.Algorithm.Utils
       CSSR.Prelude
       CSSR.Prelude.Mutable
       CSSR.Probabilistic
@@ -56,6 +57,7 @@ library
       Data.MTree.Looping
       Data.MTree.Parse
       Data.Tree.Hist
+      Data.Tree.Internal
       Data.Tree.Looping
       Data.Tree.Parse
   other-modules:

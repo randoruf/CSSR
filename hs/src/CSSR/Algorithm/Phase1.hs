@@ -20,11 +20,14 @@ import Debug.Trace
 
 
 -------------------------------------------------------------------------------
--- | Examples:
+-- |
+-- FIXME: Currently only works with characters
+--
+-- Examples:
 --
 -- >>> let short_ep = "00011110001100011110000111101101111111111000110001101101100111100111100"
 -- >>> initialization 1 short_ep
--- Tree {depth 1, alphabet: ["0","1"]}
+-- Tree {depth 1, Alphabet: ["0","1"]}
 --   root:
 --      " "->Leaf{obs: [], freq: [28,42]}
 --           children:
@@ -32,7 +35,7 @@ import Debug.Trace
 -- <BLANKLINE>
 --           "1"->Leaf{obs: ["1"], freq: [1,1], no children}
 -- >>> initialization 2 short_ep
--- Tree {depth 2, alphabet: ["0","1"]}
+-- Tree {depth 2, Alphabet: ["0","1"]}
 --   root:
 --      " "->Leaf{obs: [], freq: [28,42]}
 --           children:
@@ -47,9 +50,6 @@ import Debug.Trace
 --                "0"->Leaf{obs: ["0","1"], freq: [1,1], no children}
 -- <BLANKLINE>
 --                "1"->Leaf{obs: ["1","1"], freq: [1,1], no children}
---
---
--- FIXME: Currently only works with characters
 -------------------------------------------------------------------------------
 initialization :: Int -> [Char] -> Hist.Tree
 initialization depth (fmap T.singleton -> s) =
