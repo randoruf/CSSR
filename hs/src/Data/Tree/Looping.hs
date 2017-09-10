@@ -41,11 +41,14 @@ instance Eq Leaf where
 instance Show Leaf where
   show (Leaf b c p) =
     case b of
-      Left (Leaf b' _ _) ->
-        case b' of
-          Left _                  -> "Leaf{Loop(<error>), " ++ show c ++"}"
-          Right (LeafBody hs fs) -> "Leaf{Loop("++ show hs ++ ", " ++ show fs ++ ", " ++ show c ++ ")}"
-      Right (LeafBody hs fs) -> "Leaf{"++ show hs ++ ", " ++ show fs ++ ", " ++ show c ++ "}"
+      Right (LeafBody hs fs) -> strLeaf hs fs c
+      Left (Leaf b' _ _)     -> case b' of
+        Left _                 -> strErr c
+        Right (LeafBody hs fs) -> strLoop hs fs c
+    where
+      strErr        c = "Leaf{Loop(<error>), " ++ show c ++"}"
+      strLoop hs fs c = "Leaf{Loop(" ++ show hs ++ ", " ++ show fs ++ ", " ++ show c ++ ")}"
+      strLeaf hs fs c = "Leaf{"      ++ show hs ++ ", " ++ show fs ++ ", " ++ show c ++  "}"
 
 instance Probabilistic Leaf where
   frequency (Leaf b c p) =

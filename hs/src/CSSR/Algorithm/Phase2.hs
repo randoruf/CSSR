@@ -21,6 +21,7 @@
 -------------------------------------------------------------------------------
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE LambdaCase #-}
 module CSSR.Algorithm.Phase2 where
 
 
@@ -34,10 +35,23 @@ import qualified Data.HashTable.Class as H (insert, toList)
 import qualified CSSR.Probabilistic as Prob (unsafeMatch, unsafeMatch_, frequency)
 
 import CSSR.Prelude.Mutable
+-- for doctest
+import CSSR.Algorithm.Phase1
 
--- $setup
+
+-- |
+-- Example:
+--
+-- >>> import CSSR.Algorithm.Phase1
 -- >>> let short_ep = "00011110001100011110000111101101111111111000110001101101100111100111100"
-
+-- >>> let htree = initialization 1 short_ep
+-- >>> runST $ grow 0.01 htree >>= ML.freeze
+-- Leaf{fromList [
+--      " "->Leaf{obs: [], freq: [28,42]}
+--           children:
+--           "0"->Leaf{obs: ["0"], freq: [1,1], no children}
+-- <BLANKLINE>
+--           "1"->Leaf{obs: ["1"], freq: [1,1], no children}], [0,0], fromList []}
 grow :: forall s . Double -> Hist.Tree -> ST s (ML.MLeaf s)
 grow sig (Hist.Tree _ a hRoot) = do
   rt <- ML.mkRoot a hRoot   -- INIT root looping node

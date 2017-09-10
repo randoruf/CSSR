@@ -59,8 +59,8 @@ data MTree s = MTree
   , _root :: MLeaf s
   }
 
-freeze :: forall s . Double -> MLeaf s -> ST s L.Leaf
-freeze sig ml = do
+freeze :: forall s . MLeaf s -> ST s L.Leaf
+freeze ml = do
   hs <- freezeHistories ml
   f  <- V.freeze . frequency $ ml
   cs <- freezeDown =<< (H.toList . children $ ml)
@@ -86,10 +86,10 @@ freeze sig ml = do
         icer (e, Left lp) = do
           f <- V.freeze $ frequency lp
           hs <- (fmap.fmap) fst $ H.toList (histories lp)
-          c <- freeze sig lp
+          c <- freeze lp
           return (e, c)
         icer (e, Right lp) = do
-          c <- freeze sig lp
+          c <- freeze lp
           hs <- (fmap.fmap) fst $ H.toList (histories lp)
           return (e, c)
 
