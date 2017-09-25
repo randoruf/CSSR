@@ -52,56 +52,61 @@ import CSSR.Algorithm.Phase1
 --           "0"->Leaf{obs: ["0"], freq: [1,1], no children}
 -- <BLANKLINE>
 --           "1"->Leaf{obs: ["1"], freq: [1,1], no children}], [0,0], fromList []}
-grow :: forall s . Double -> Hist.Tree -> ST s (ML.MLeaf s)
+grow :: forall s . Double -> Hist.Tree -> ST s (ML.MTree s)
 grow sig (Hist.Tree _ a hRoot) = do
   rt <- ML.mkRoot a hRoot   -- INIT root looping node
   ts <- newSTRef [rt]       -- INIT queue of active, unchecked nodes
   let q = S.singleton rt    -- QUEUE root
   go q ts
-  return rt
+  pure $ ML.tree ts rt
   where
     go :: Seq (MLeaf s) -> STRef s [MLeaf s] -> ST s ()
     go q termsRef =
-      unless (S.null q) $ do            -- WHILE queue is not empty
+      unless (S.null q) $ do                                  -- WHILE queue is not empty
         terms <- readSTRef termsRef
-        isHomogeneous sig active >>= \case
-          True  -> go next termsRef
-          False -> do
-            cs' <- nextChilds
+        isHomogeneous sig active >>= \case                    --   COMPUTE homogeneity(dequeued looping node, parse tree)
+          True  -> go next termsRef                           --   IF node is homogeneous
+                                                              --   THEN continue
+          False -> do                                         --   ELSE
+            cs' <- nextChilds                                 --     CONSTRUCT new looping nodes for all valid children (one for each symbol in
+                                                              --               alphabet - must have empirical observation in dataset).
             let cs'' = fmap snd cs'
-
-            -- COMPUTE excisability(node, looping tree)
-            cs <- (flip mapM) cs' $ \(e, x) -> findLoops x >>= (pure . (e,))
-
-            forM_ cs $ \(e, x) -> H.insert (ML.children active) e x
-            writeSTRef termsRef (cs'' <> delete active terms)
-
-            --   ADD all new looping nodes to children of active (mapped by symbol)
-            --   ADD unexcisable children to queue (FIXME: what about edgesets?)
-            go (next <> S.fromList cs'') termsRef
-
+            cs <-
+              (flip mapM) cs' $                               --     FOR each new node constructed
+                \(e, x) -> findLoops x >>= (pure . (e,))      --       COMPUTE excisability(node, looping tree)
+            forM_ cs $
+              \(e, x) -> H.insert (ML.children active) e x    --       ADD all new looping nodes to children of active node (mapped by symbol)
+            writeSTRef termsRef (cs'' <> delete active terms) --       ADD unexcisable children to queue (FIXME: what about edgesets?)
+                                                              --   ENDIF
+            go (next <> S.fromList cs'') termsRef             -- ENDWHILE
       where
+        (active, next) = splitTerminals q
+
+        splitTerminals :: Seq (MLeaf s) -> (MLeaf s, Seq (MLeaf s))
+        splitTerminals = ((flip S.index 0) *** identity) . S.splitAt 1
+
+        -- COMPUTE excisability(node, looping tree)
         findLoops :: MLeaf s -> ST s (MLNode s)
         findLoops ll =
           excisable sig ll >>= \case
             Nothing -> return $ Right ll
             Just ex -> return $ Left ex
 
-        next :: Seq (MLeaf s)
-        (active', next) = S.splitAt 1 q
-
-        active :: MLeaf s
-        active = S.index active' 0
-
         -- CONSTRUCT new looping nodes for all valid children
         --    (one for each symbol in alphabet - must have empirical
         --    observation in dataset).
         nextChilds :: ST s [(Event, MLeaf s)]
-        nextChilds = do
-          hs <- (fmap.fmap) fst . H.toList . ML.histories $ active
-          traverse (\(e, _hs) -> (e,) <$> ML.mkLeaf (Just active) _hs) $ groupHistory hs
+        nextChilds =
+          activeHistories >>=
+          traverse (\(e, _hs) -> (e,) <$> activeAsLeaf _hs) . groupHistory
+          where
+            activeHistories :: ST s [Hist.Leaf]
+            activeHistories = (fmap.fmap) fst . H.toList . ML.histories $ active
 
-        groupHistory :: [Hist.Leaf] -> [(Event, [Hist.Leaf])]
-        groupHistory = groupBy (V.head . view (Hist.body . Hist.obs))
+            activeAsLeaf :: [Hist.Leaf] -> ST s (MLeaf s)
+            activeAsLeaf _hs = ML.mkLeaf (Just active) _hs
+
+            groupHistory :: [Hist.Leaf] -> [(Event, [Hist.Leaf])]
+            groupHistory = groupBy (V.head . view (Hist.body . Hist.obs))
 
 
