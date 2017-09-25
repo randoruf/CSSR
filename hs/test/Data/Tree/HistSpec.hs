@@ -34,7 +34,7 @@ spec = do
       let node = findNode path
       it ("finds node " ++ show path) $ isJust node
       it ("node " ++ show path ++ "'s path matches") $
-        maybe False ((V.fromList path ==) . view (body . obs)) node
+        maybe False ((V.fromList path ==) . view (bodyL . obsL)) node
 
     findsNothing :: [Event] -> Spec
     findsNothing path =

@@ -14,7 +14,8 @@ import Lens.Micro.Internal
 import GHC.Generics (Generic)
 import Data.Hashable
 
-import CSSR.Probabilistic
+import CSSR.Probabilistic (Probabilistic)
+import qualified CSSR.Probabilistic as Prob (Probabilistic(..))
 import qualified Data.Tree.Parse as P
 import qualified Data.Tree.Parse as Parse
 import Data.Alphabet
@@ -25,19 +26,19 @@ import CSSR.Prelude
 -- Hist Tree ADTs
 -------------------------------------------------------------------------------
 data Tree = Tree
-  { _depth :: Int
-  , _alphabet :: Alphabet
-  , _root :: Leaf
+  { depth :: Int
+  , alphabet :: Alphabet
+  , root :: Leaf
   } deriving (Eq, Generic)
 
 data Leaf = Leaf
-  { _body :: LeafBody
-  , _children :: HashMap Event Leaf
+  { body :: LeafBody
+  , children :: HashMap Event Leaf
   } deriving (Eq, Generic)
 
 data LeafBody = LeafBody
-  { _obs       :: Vector Event
-  , _frequency :: Vector Integer
+  { obs       :: Vector Event
+  , frequency :: Vector Integer
   } deriving (Eq, Generic)
 
 instance Show Tree where
@@ -67,13 +68,29 @@ instance Hashable LeafBody
 instance Hashable Leaf
 instance Hashable Tree
 
-makeLenses ''LeafBody
-makeLenses ''Leaf
-makeLenses ''Tree
+depthL :: Lens' Tree Int
+depthL = lens depth $ \leaf a -> leaf { depth = a }
 
+alphabetL :: Lens' Tree Alphabet
+alphabetL = lens alphabet $ \leaf a -> leaf { alphabet = a }
+
+rootL :: Lens' Tree Leaf
+rootL = lens root $ \leaf a -> leaf { root = a }
+
+bodyL :: Lens' Leaf LeafBody
+bodyL = lens body $ \leaf a -> leaf { body = a }
+
+childrenL :: Lens' Leaf (HashMap Event Leaf)
+childrenL = lens children $ \leaf a -> leaf { children = a }
+
+obsL :: Lens' LeafBody (Vector Event)
+obsL = lens obs $ \bod a -> bod { obs = a }
+
+frequencyL :: Lens' LeafBody (Vector Integer)
+frequencyL = lens frequency $ \a b -> a { frequency = b }
 
 instance Probabilistic Leaf where
-  frequency = view (body . Data.Tree.Hist.frequency)
+  frequency = view (bodyL . frequencyL)
 
 
 -------------------------------------------------------------------------------
@@ -145,9 +162,9 @@ instance Ixed Leaf where
           goAgain child' = Leaf bod (HM.insert c child' childs)
 
 navigate :: Tree -> Vector Event -> Maybe Leaf
-navigate tree history
-  | V.null history = Just (view root tree)
-  | otherwise = go (V.length history) (view root tree)
+navigate (view rootL -> rt) history
+  | V.null history = Just rt
+  | otherwise = go (V.length history) rt
   where
     go :: Int -> Leaf -> Maybe Leaf
     go 0 lf = Just lf

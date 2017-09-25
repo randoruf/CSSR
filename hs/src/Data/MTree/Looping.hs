@@ -59,6 +59,7 @@ data MTree s = MTree
   , _root :: MLeaf s
   }
 
+
 freeze :: forall s . MLeaf s -> ST s L.Leaf
 freeze ml = do
   hs <- freezeHistories ml
@@ -98,7 +99,7 @@ mkLeaf :: Maybe (MLeaf s) -> [Hist.Leaf] -> ST s (MLeaf s)
 mkLeaf p hs =
   MLeaf
     <$> H.fromList (fmap (, True) hs)
-    <*> GV.thaw (foldr1 Prob.addFrequencies $ fmap (view (Hist.body . Hist.frequency)) hs)
+    <*> GV.thaw (foldr1 Prob.addFrequencies $ fmap (view (Hist.bodyL . Hist.frequencyL)) hs)
     <*> H.new
     <*> newSTRef p
     <*> newSTRef False
@@ -175,7 +176,7 @@ markEdgeSets terminals leaf = do
 --
 isHomogeneous :: forall s . Double -> MLeaf s -> ST s Bool
 isHomogeneous sig ll = do
-  hs <- (fmap.fmap) (view Hist.children . fst) ll'
+  hs <- (fmap.fmap) (view Hist.childrenL . fst) ll'
   foldrM step True $ HS.fromList (hs >>= HM.elems)
   where
     ll' :: ST s [(Hist.Leaf, Bool)]
