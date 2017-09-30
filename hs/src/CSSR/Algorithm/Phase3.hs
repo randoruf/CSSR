@@ -43,32 +43,43 @@
 --   + if we let a terminal node's distribution override another terminal node's
 --       distribution (via subtree) will order matter?
 -------------------------------------------------------------------------------
+{-# LANGUAGE TupleSections #-}
 module CSSR.Algorithm.Phase3 where
 
 import qualified Data.Tree.Looping as Looping (Tree)
 import qualified Data.MTree.Looping as Looping
+import qualified Data.Tree.Looping as Looping hiding (histories)
 import qualified Data.Vector as V
 import qualified Data.MTree.Parse as M
 import qualified Data.Tree.Parse as P
 import qualified Data.Tree.Hist as Hist
 import qualified Data.MTree.Parse as MHist
+-- import qualified Data.HashSet as HS
+import Data.Alphabet
+import Data.Set (Set)
+import qualified Data.Set as S
+
+import CSSR.Prelude.Mutable
+import qualified Data.HashMap.Strict as HM
 import Debug.Trace
+import CSSR.Probabilistic
+import qualified Data.HashSet as HS
 
 type Terminal = Looping.MLeaf
 
-stepFromTerminal :: Looping.MTree s -> Terminal s -> [Maybe (Looping.Leaf s)]
-stepFromTerminal ltree term = foldr go mempty $ zip [0..] (distribution term)
+stepFromTerminal :: Looping.MTree s -> Terminal s -> [Maybe (Looping.MLeaf s)]
+stepFromTerminal ltree term = foldr go mempty $ zip [0..] (toList $ distribution term)
   where
-    w :: HashSet Hist.Leaf
-    w = HS.toList (histories term)
+    w :: Set Hist.Leaf
+    w = S.fromList (Looping.histories term)
 
     alphabet :: Alphabet
     alphabet = alphabet ltree
 
-    navigateToNext :: Int -> Maybe (Looping.Leaf s)
+    navigateToNext :: Int -> Maybe (Looping.MLeaf s)
     navigateToNext i = navigateLoopingTree ltree (w :+ alphabet ! i)
 
-    go :: [Maybe (Looping.Leaf s)] -> (Int, Float) -> [Maybe (Looping.Leaf s)]
+    go :: (Int, Double) -> [Maybe (Looping.MLeaf s)] -> [Maybe (Looping.MLeaf s)]
     go acc (i, p)
        | p > 0     = navigateToNext i : acc
        | otherwise = acc
@@ -81,7 +92,7 @@ refine ltree' = do
   when stillDirty $ refine ltree'
   where
     toCheck :: Set (Looping.MLeaf s, Looping.MLeaf s)
-    toCheck = HS.fromList $ filter (isJust . snd) foo
+    toCheck = S.fromList $ filter (isJust . snd) foo
       where
         foo :: [(Terminal s, Looping.Leaf s)]
         foo = catMaybes $ mapM (\t -> (,t) <$> stepFromTerminal ltree t) (terminals ltree)
@@ -92,7 +103,7 @@ refine ltree' = do
         go' :: (Bool, Transitions s) -> (Terminal s, Looping.MLeaf s) -> ST s (Bool, Transitions s)
         go' (dirt, transitions) (term, step) =
           -- check to see if this leaf is _not_ a terminal leaf
-          if terminals ltree `HS.contains` step
+          if terminals ltree `S.member` step
           then pure (dirt, HM.insertWith (\new old -> old) term mempty transisions)
           else
           case step of
@@ -108,11 +119,11 @@ refine ltree' = do
               else pure (dirt, transitions)
               where
                 -- terminal nodes cannot be overwritten
-                torefine = filter (not . HS.elem (terminals ltree)) $ collectLeaves ltree step
+                torefine = filter (not . S.member (terminals ltree)) $ collectLeaves ltree step
 
             runRefinement = do
               (mapM (refineWith term) torefine $
-                filter (not . HS.elem (terminals ltree)) $
+                filter (not . S.member (terminals ltree)) $
                   collectLeaves ltree step)
               >> pure (True, transitions)
 
