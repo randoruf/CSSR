@@ -75,3 +75,19 @@ nullHypothesis ss val = kstwo (countsAndDist ss) (countsAndDist val)
 
 
 
+-- ========================================================================= --
+
+newtype Average a = Average { unAverage :: (Int, a) }
+
+instance Num a => Monoid (Average a) where
+  mempty = Average (0, 0)
+  mappend (Average (c0, a0)) (Average (c1, a1)) = Average (c0+c1, a0+a1)
+
+-- TODO: this might throw an Arithmetic error
+getAverageI :: (Fractional a, Integral n) => Average n -> a
+getAverageI (Average (l, s)) = fromIntegral s / fromIntegral l
+
+-- TODO: this might throw an Arithmetic error
+getAverageF :: (Fractional a) => Average a -> a
+getAverageF (Average (l, s)) = s / fromIntegral l
+
