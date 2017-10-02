@@ -26,13 +26,13 @@ module CSSR.Algorithm.Phase2 where
 
 
 import Data.MTree.Looping as ML
-import qualified Data.Tree.Hist as Hist (Tree(..), Leaf(..), body, obs, children)
-import qualified Data.Sequence as S (singleton, null, fromList, splitAt, index)
-import qualified Data.HashSet as HS (fromList)
-import qualified Data.HashMap.Strict as HM (elems)
-import qualified Data.Vector as V (head)
-import qualified Data.HashTable.Class as H (insert, toList)
-import qualified CSSR.Probabilistic as Prob (unsafeMatch, unsafeMatch_, frequency)
+import qualified Data.Tree.Hist as Hist
+import qualified Data.Sequence as S
+import qualified Data.HashSet as HS
+import qualified Data.HashMap.Strict as HM
+import qualified Data.Vector as V
+import qualified Data.HashTable.Class as H
+import qualified CSSR.Probabilistic as Prob
 
 import CSSR.Prelude.Mutable
 -- for doctest
@@ -58,7 +58,8 @@ grow sig (Hist.Tree _ a hRoot) = do
   ts <- newSTRef [rt]       -- INIT queue of active, unchecked nodes
   let q = S.singleton rt    -- QUEUE root
   go q ts
-  pure $ ML.tree ts rt
+  ts' <- HS.fromList <$> readSTRef ts
+  pure $ ML.MTree ts' rt
   where
     go :: Seq (MLeaf s) -> STRef s [MLeaf s] -> ST s ()
     go q termsRef =
@@ -107,6 +108,6 @@ grow sig (Hist.Tree _ a hRoot) = do
             activeAsLeaf _hs = ML.mkLeaf (Just active) _hs
 
             groupHistory :: [Hist.Leaf] -> [(Event, [Hist.Leaf])]
-            groupHistory = groupBy (V.head . view (Hist.body . Hist.obs))
+            groupHistory = groupBy (V.head . view (Hist.bodyL . Hist.obsL))
 
 

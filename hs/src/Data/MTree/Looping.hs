@@ -35,6 +35,8 @@ data MLeaf s = MLeaf
   , parent :: STRef s (Maybe (MLeaf s))
   , hasEdgeset :: STRef s Bool
   }
+instance Hashable (MLeaf s) where
+  hashWithSalt = undefined
 
 instance Probabilistic (MLeaf s) where
   frequency = frequency
