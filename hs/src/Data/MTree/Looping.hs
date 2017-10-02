@@ -30,28 +30,31 @@ type HashTableSet s a = C.HashTable s a Bool
 data MLeaf s = MLeaf
   -- for lack of a mutable hash set implementation
   { histories :: HashTableSet s Hist.Leaf
-  , frequency :: MVector s Integer
+  , frequency :: Vector Integer -- TODO => benchmark this vs. mutable version
   , children :: C.HashTable s Event (MLNode s)
   , parent :: STRef s (Maybe (MLeaf s))
   , hasEdgeset :: STRef s Bool
   }
 
+instance Probabilistic (MLeaf s) where
+  frequency = frequency
+
 type Loop s = MLeaf s
 
 type MLNode s = Either (Loop s) (MLeaf s)
 
-overlaps :: forall s . MLeaf s -> MLeaf s -> ST s Bool
-overlaps l0 l1 = do
-  p0 <- readSTRef $ parent l0
-  p1 <- readSTRef $ parent l1
-  return $ mvecEq l0 l1 && p0 == p1
-  where
-    mvecEq = MV.overlaps `on` frequency
+-- overlaps :: forall s . MLeaf s -> MLeaf s -> ST s Bool
+-- overlaps l0 l1 = do
+--   p0 <- readSTRef $ parent l0
+--   p1 <- readSTRef $ parent l1
+--   return $ mvecEq l0 l1 && p0 == p1
+--   where
+--     mvecEq = MV.overlaps `on` frequency
 
 instance Eq (MLeaf s) where
   l0 == l1 = mvecEq l0 l1
     where
-      mvecEq = MV.overlaps `on` frequency
+      mvecEq = (==) `on` frequency
 
 
 data MTree s = MTree
@@ -63,7 +66,7 @@ data MTree s = MTree
 freeze :: forall s . MLeaf s -> ST s L.Leaf
 freeze ml = do
   hs <- freezeHistories ml
-  f  <- V.freeze . frequency $ ml
+  let f = frequency ml
   cs <- freezeDown =<< (H.toList . children $ ml)
   let cur = L.Leaf (Right (L.LeafBody hs f)) cs Nothing
   return $ withChilds cur (HM.map (withParent (Just cur)) cs)
@@ -85,7 +88,7 @@ freeze ml = do
       where
         icer :: (Event, MLNode s) -> ST s (Event, L.Leaf)
         icer (e, Left lp) = do
-          f <- V.freeze $ frequency lp
+          let f = frequency lp
           hs <- (fmap.fmap) fst $ H.toList (histories lp)
           c <- freeze lp
           return (e, c)
@@ -99,7 +102,7 @@ mkLeaf :: Maybe (MLeaf s) -> [Hist.Leaf] -> ST s (MLeaf s)
 mkLeaf p hs =
   MLeaf
     <$> H.fromList (fmap (, True) hs)
-    <*> GV.thaw (foldr1 Prob.addFrequencies $ fmap (view (Hist.bodyL . Hist.frequencyL)) hs)
+    <*> pure (foldr1 Prob.addFrequencies $ fmap (view (Hist.bodyL . Hist.frequencyL)) hs)
     <*> H.new
     <*> newSTRef p
     <*> newSTRef False
@@ -108,7 +111,7 @@ mkRoot :: Alphabet -> Hist.Leaf -> ST s (MLeaf s)
 mkRoot (Alphabet vec _) hrt =
   MLeaf
     <$> H.fromList [(hrt, True)]
-    <*> MV.replicate (V.length vec) 0
+    <*> pure (V.replicate (V.length vec) 0)
     <*> H.new
     <*> newSTRef Nothing
     <*> newSTRef False
@@ -158,7 +161,7 @@ markEdgeSets terminals leaf = do
     edgeset ancestors = fmap nub . filterM identicalDist $ terminals \\ ancestors
 
     distributionST :: MLeaf s -> ST s (Vector Double)
-    distributionST lf = Prob.freqToDist <$> V.freeze (frequency lf)
+    distributionST lf = pure $ Prob.freqToDist (frequency lf)
 
 
 -- | === Homogeneity
@@ -185,7 +188,7 @@ isHomogeneous sig ll = do
     step :: Hist.Leaf -> Bool -> ST s Bool
     step pc = \case
       False -> pure False
-      True  -> Prob.unsafeMatch (frequency ll) (Prob.frequency pc) sig
+      True  -> pure $ Prob.matchesDists_ (frequency ll) (Prob.frequency pc) sig
 
 
 -- | === Excisability
@@ -211,14 +214,14 @@ isHomogeneous sig ll = do
 -- >>> ptree
 --
 excisable :: forall s . Double -> MLeaf s -> ST s (Maybe (MLeaf s))
-excisable sig ll = getAncestors ll >>= go
+excisable sig ll = getAncestors ll >>= pure . go
   where
-    go :: [MLeaf s] -> ST s (Maybe (MLeaf s))
-    go     [] = pure Nothing
-    go (a:as) = Prob.unsafeMatch_ (frequency ll) (frequency a) sig
-      >>= \case
-        True  -> pure (Just a)
-        False -> go as
+    go :: [MLeaf s] -> Maybe (MLeaf s)
+    go     [] = Nothing
+    go (a:as) = do
+      if Prob.matchesDists_ (frequency ll) (frequency a) sig
+      then (Just a)
+      else go as
 
 -- |
 -- Returns ancestors in order of how they should be processed
