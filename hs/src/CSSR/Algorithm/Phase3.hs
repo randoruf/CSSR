@@ -90,16 +90,16 @@ stepFromTerminal alpha (Looping.root->rt) term = foldrM go [] $ zip [0..] (toLis
 
 type Transitions s = HashMap (Terminal s) (HashSet (Looping.MLeaf s))
 
-refine :: Looping.MTree s -> ST s ()
-refine ltree' = do
+refine :: forall s . Alphabet -> Looping.MTree s -> ST s ()
+refine a ltree' = do
   (stillDirty, transitions) <- findDirt
-  when stillDirty $ refine ltree'
+  when stillDirty $ refine a ltree'
   where
-    toCheck :: Set (Looping.MLeaf s, Looping.MLeaf s)
-    toCheck = S.fromList $ filter (isJust . snd) foo
+    toCheck :: ST s (HashSet (Looping.MLeaf s, Looping.MLeaf s))
+    toCheck = HS.fromList <$> foldrM go mempty (HS.toList $ Looping.terminals ltree')
       where
-        foo :: [(Terminal s, Looping.MLeaf s)]
-        foo = catMaybes $ mapM (\t -> (,t) <$> stepFromTerminal ltree t) (terminals ltree)
+        go :: Looping.MLeaf s -> [(Looping.MLeaf s, Looping.MLeaf s)] -> ST s [(Looping.MLeaf s, Looping.MLeaf s)]
+        go t memo = (memo <>) . fmap (,t) . catMaybes <$> stepFromTerminal a ltree' t
 
     findDirt :: ST s (Bool, Transitions s)
     findDirt = foldrM go' False
