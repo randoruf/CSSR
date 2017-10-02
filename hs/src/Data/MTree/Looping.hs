@@ -58,10 +58,9 @@ instance Eq (MLeaf s) where
 
 
 data MTree s = MTree
-  { _terminals :: HashSet (MLeaf s)
-  , _root :: MLeaf s
+  { terminals :: HashSet (MLeaf s)
+  , root :: MLeaf s
   }
-
 
 freeze :: forall s . MLeaf s -> ST s L.Leaf
 freeze ml = do

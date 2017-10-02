@@ -44,11 +44,12 @@
 --       distribution (via subtree) will order matter?
 -------------------------------------------------------------------------------
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module CSSR.Algorithm.Phase3 where
 
 import qualified Data.Tree.Looping as Looping (Tree)
 import qualified Data.MTree.Looping as Looping
-import qualified Data.Tree.Looping as Looping hiding (histories)
+-- import qualified Data.Tree.Looping as Looping hiding (histories, children)
 import qualified Data.Vector as V
 import qualified Data.MTree.Parse as M
 import qualified Data.Tree.Parse as P
@@ -61,28 +62,31 @@ import qualified Data.Set as S
 
 import CSSR.Prelude.Mutable
 import qualified Data.HashMap.Strict as HM
+import qualified Data.HashTable.ST.Cuckoo as C
 import Debug.Trace
 import CSSR.Probabilistic
 import qualified Data.HashSet as HS
 
 type Terminal = Looping.MLeaf
 
-stepFromTerminal :: Looping.MTree s -> Terminal s -> [Maybe (Looping.MLeaf s)]
-stepFromTerminal ltree term = foldr go mempty $ zip [0..] (toList $ distribution term)
+
+stepFromTerminal :: forall s . Alphabet -> Looping.MTree s -> Terminal s -> ST s [Maybe (Looping.MLeaf s)]
+stepFromTerminal alpha (Looping.root->rt) term = foldrM go [] $ zip [0..] (toList (distribution term))
   where
-    w :: Set Hist.Leaf
-    w = S.fromList (Looping.histories term)
+    w' :: ST s (Vector Event)
+    w' = view (_Just . _2 . Hist.bodyL . Hist.obsL) <$> C.nextByIndex (Looping.histories term) 0
 
-    alphabet :: Alphabet
-    alphabet = alphabet ltree
+    navigateToNext :: Int -> ST s (Maybe (Looping.MLeaf s))
+    navigateToNext i = do
+      w <- w'
+      mnext <- Looping.walk (Right rt) (w `V.snoc` (idxToSym alpha ! i))
+      pure $ fmap (either identity identity) mnext
 
-    navigateToNext :: Int -> Maybe (Looping.MLeaf s)
-    navigateToNext i = navigateLoopingTree ltree (w :+ alphabet ! i)
+    go :: (Int, Double) -> [Maybe (Looping.MLeaf s)] -> ST s [Maybe (Looping.MLeaf s)]
+    go (i, p) acc
+       | p > 0     = navigateToNext i >>= \n -> pure (n : acc)
+       | otherwise = pure acc
 
-    go :: (Int, Double) -> [Maybe (Looping.MLeaf s)] -> [Maybe (Looping.MLeaf s)]
-    go acc (i, p)
-       | p > 0     = navigateToNext i : acc
-       | otherwise = acc
 
 type Transitions s = HashMap (Terminal s) (HashSet (Looping.MLeaf s))
 
@@ -94,7 +98,7 @@ refine ltree' = do
     toCheck :: Set (Looping.MLeaf s, Looping.MLeaf s)
     toCheck = S.fromList $ filter (isJust . snd) foo
       where
-        foo :: [(Terminal s, Looping.Leaf s)]
+        foo :: [(Terminal s, Looping.MLeaf s)]
         foo = catMaybes $ mapM (\t -> (,t) <$> stepFromTerminal ltree t) (terminals ltree)
 
     findDirt :: ST s (Bool, Transitions s)
@@ -105,27 +109,26 @@ refine ltree' = do
           -- check to see if this leaf is _not_ a terminal leaf
           if terminals ltree `S.member` step
           then pure (dirt, HM.insertWith (\new old -> old) term mempty transisions)
-          else
-          case step of
+          else case step of
             Right subtree -> onRight subtree
             Left loop -> onLeft loop
           where
             -- FIXME: "if either of the above return None, else we have a sub-looping-tree and return Some.
             -- refine subtree"
             onRight subtree =
-              if isNothing (terminalReference step)
-              -- loop is now dirty
-              then runRefinement
-              else pure (dirt, transitions)
+              case (terminalReference step) of
+                Nothing -> runRefinement -- loop is now dirty
+                Just _  -> pure (dirt, transitions)
+
+            runRefinement =
+              mapM (refineWith term) torefine $
+                filter (not . S.member (terminals ltree)) $
+                  collectLeaves ltree step
+              >> pure (True, transitions)
               where
                 -- terminal nodes cannot be overwritten
                 torefine = filter (not . S.member (terminals ltree)) $ collectLeaves ltree step
 
-            runRefinement = do
-              (mapM (refineWith term) torefine $
-                filter (not . S.member (terminals ltree)) $
-                  collectLeaves ltree step)
-              >> pure (True, transitions)
 
             onLeft loop =
               -- if we find a "terminal-looping" node (ie- any looping node) that is not a terminal node:
@@ -157,7 +160,7 @@ refine ltree' = do
       --   -- where
       --   --   go :: Set (Terminal s) -> ST s _
       --   --   go (sortBy observed . toList -> ts) = do -- TODO: Sorting for debugging, but remove?
-      --   --     let 
+      --   --     let
       --   --       h = head ts
       --   --       t = tail ts
       --   --       hset = HS.singleton (head ts)
@@ -181,9 +184,9 @@ refine ltree' = do
         --             pure $ matchNotFound && treeMatch
 
         --         forM (filter filterfun ess) $ \es -> do
-        --           modifySTRef (HS.append t) es 
+        --           modifySTRef (HS.append t) es
         --           setEdgeSet t es
-        --           matchFound 
+        --           matchFound
 
 
         --     // just in case there are actually multiple edgsets found with matching transitions
