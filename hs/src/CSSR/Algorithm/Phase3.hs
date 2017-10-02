@@ -91,191 +91,199 @@ stepFromTerminal alpha (Looping.root->rt) term = foldrM go [] $ zip [0..] (toLis
 type Transitions s = HashMap (Terminal s) (HashSet (Looping.MLeaf s))
 
 toCheck :: forall s . Alphabet -> Looping.MTree s -> ST s [(Looping.MLeaf s, Looping.MLeaf s)]
-toCheck a tree = foldrM go mempty (HS.toList $ Looping.terminals tree)
+toCheck a tree = foldrM go mempty (terminals tree)
   where
     go :: Looping.MLeaf s -> [(Looping.MLeaf s, Looping.MLeaf s)] -> ST s [(Looping.MLeaf s, Looping.MLeaf s)]
-    go t memo = (memo <>) . fmap (,t) . catMaybes <$> stepFromTerminal a tree t
+    go t memo
+      = (memo <>)  -- add to the current list of teminals to check
+      . fmap (,t)  -- make sure transitions are paired with their origin terminal
+      . catMaybes  -- remove any terminals which truly terminate
+      <$> stepFromTerminal a tree t
+
+    terminals :: Looping.MTree s -> [Looping.MLeaf s]
+    terminals = HS.toList . Looping.terminals
 
 
 refine :: forall s . Alphabet -> Looping.MTree s -> ST s ()
 refine a ltree' = do
-  (stillDirty, transitions) <- findDirt
-  when stillDirty $ refine a ltree'
-  where
-    findDirt :: ST s (Bool, Transitions s)
-    findDirt = foldrM go' False
-      where
-        go' :: (Bool, Transitions s) -> (Terminal s, Looping.MLeaf s) -> ST s (Bool, Transitions s)
-        go' (dirt, transitions) (term, step) =
-          -- check to see if this leaf is _not_ a terminal leaf
-          if terminals ltree `S.member` step
-          then pure (dirt, HM.insertWith (\new old -> old) term mempty transisions)
-          else case step of
-            Right subtree -> onRight subtree
-            Left loop -> onLeft loop
-          where
-            -- FIXME: "if either of the above return None, else we have a sub-looping-tree and return Some.
-            -- refine subtree"
-            onRight subtree =
-              case (terminalReference step) of
-                Nothing -> runRefinement -- loop is now dirty
-                Just _  -> pure (dirt, transitions)
-
-            runRefinement =
-              mapM (refineWith term) torefine $
-                filter (not . S.member (terminals ltree)) $
-                  collectLeaves ltree step
-              >> pure (True, transitions)
-              where
-                -- terminal nodes cannot be overwritten
-                torefine = filter (not . S.member (terminals ltree)) $ collectLeaves ltree step
-
-
-            onLeft loop =
-              -- if we find a "terminal-looping" node (ie- any looping node) that is not a terminal node:
-              -- FIXME: if we find a "terminal-edgeSet" node: merge this node into the terminal node
-              case terminalReference loop of
-                Just terminal -> do                             -- is already refined
-                  _ <- addHistories terminal (histories loop)   -- merge this node into the terminal node
-                  _ <- setTerminalReference loop terminal       -- FIXME: seems unnessecary
-                  pure (dirt, terminals)                        -- continue with current isDirty value
-
-                Nothing -> do                                   -- we have a non-terminating loop
-                  void $ setTerminalReference loop loop         -- FIXME: seems unnessecary
-                  void $ addTerminalToTree (terminals ltree) loop
-                  -- FIXME: merge the loop's empirical observations as well - but maybe we should do this above...
-                  -- ...at any rate, the loop is all we need to prototype this.
-                  runRefinement
-
-      -- transitionGroups :: Transitions s -> [Set (Terminal s)]
-      -- transitionGroups transitions = undefined
-      --   -- // group by transitions
-      --   -- .groupBy{ _._2 }
-      --   -- // throw away transitions, look only at grouped terminals
-      --   -- .mapValues(_.keySet)
-      --   -- .values
-      --   -- // split groups by matching distribution
-
-      -- toMerge :: ST s _
-      -- toMerge = undefined -- mapM go transitionGroups
-      --   -- where
-      --   --   go :: Set (Terminal s) -> ST s _
-      --   --   go (sortBy observed . toList -> ts) = do -- TODO: Sorting for debugging, but remove?
-      --   --     let
-      --   --       h = head ts
-      --   --       t = tail ts
-      --   --       hset = HS.singleton (head ts)
-      --   --     _ <- setEdgeSet h hset
-      --   --     -- just in case there are actually multiple edgsets found with matching transitions
-        --     let
-        --       filterfun :: Set (Terminal s) -> ST s Bool
-        --       filterfun es = do
-        --         matchFound <- not <$> readSTRef matchFound
-        --         treeMatch <- Tree.matches(t)(es.head)
-        --         pure $ m && Tree.matches(t)(es.head))
-        --         !matchFound && Tree.matches(t)(es.head))
-
-        --       edgeSets :: ST s (Set[Set[Terminal]])
-        --       edgeSets = foldrM (HS.singleton hset) $ \ess t -> do
-        --         let
-        --           filterfun :: Set (Terminal s) -> ST s Bool
-        --           filterfun es = do
-        --             matchNotFound <- not <$> readSTRef matchFound
-        --             treeMatch <- Tree.matches t (head es)
-        --             pure $ matchNotFound && treeMatch
-
-        --         forM (filter filterfun ess) $ \es -> do
-        --           modifySTRef (HS.append t) es
-        --           setEdgeSet t es
-        --           matchFound
-
-
-        --     // just in case there are actually multiple edgsets found with matching transitions
-        --     val edgeSets:Set[Set[Terminal]] = tail.foldLeft(Set(newSet))((ess, t) => {
-        --       var matchFound = false
-
-        --       for (es <- ess if !matchFound && Tree.matches(t)(es.head)) {
-        --         es += t
-        --         t.edgeSet = Some(es)
-        --         matchFound = true
-        --       }
-
-        --       if (matchFound) ess else {
-        --         val newSet = mutable.Set(t)
-        --         t.edgeSet = Some(newSet)
-        --         ess ++ Set(newSet)
-        --       }
-        --     })
-        --     .map(_.toSet)
-
-
-
-
-
-
-
-
-
-
-        --       for (es <- ess if !matchFound && Tree.matches(t)(es.head)) {
-        --         matchFound = true
-        --       }
-
-        --       if (matchFound) ess else {
-        --         val newSet = mutable.Set(t)
-        --         t.edgeSet = Some(newSet)
-        --         ess ++ Set(newSet)
-        --       }
-        --     })
-        --     .map(_.toSet)
-
-
-        --   (, tail ts)
-
-
-        --   tSet => {
-        --     -- val (head, tail) = unsafeHeadAnd(tSet.toList.sortBy(_.observed.mkString(ltree.alphabet.delim)))
-        --     -- val newSet = mutable.Set(head)
-        --     -- head.edgeSet = Some(newSet)
-
-        --                 edgeSets
-        --   }
-        -- }
-        -- -- don't look at singleton groups
-        -- .filter{ _.size > 1 }
-
-
---       // perform final updates and merges
---       toMerge
---         .foreach {
---           set:Set[Terminal] =>
---             // holy moly we need to turn this into a dag and not a cyclic-linked-list-tree
---             val (head:Terminal, tail:List[Terminal]) = unsafeHeadAnd(set.filter{_.parent.nonEmpty}.toList.sortBy(_.observed.mkString(ltree.alphabet.delim)))
---             tail.foreach {
---               node =>
---                 node.parent.get.children.put(node.observation, Left(head))
---                 ltree.terminals = ltree.terminals - node
---             }
---         }
-
---       stillDirty = stillDirty || toMerge.nonEmpty
-
---     } while (stillDirty)
---   }
-
---   def headAnd [T] (l:List[T]):(Option[T], List[T]) = (l.headOption, l.tail)
---   def unsafeHeadAnd [T] (l:List[T]):(T, List[T]) = (l.head, l.tail)
-
---   def collect(ptree: ParseTree, ltree:LoopingTree, depth:Int, states:Set[State], stateMap: Map[Terminal, State]):Unit = {
---     val collectables = ptree.getDepth(depth) ++ ptree.getDepth(depth - 1)
-
---     collectables
---       .foreach { pLeaf => {
---         val maybeLLeaf = ltree.navigateToTerminal(pLeaf.observed, states.flatMap(_.terminals).toSet)
---         val maybeState = maybeLLeaf.flatMap { terminal => stateMap.get(terminal) }
-
---         maybeState.foreach { state => state.addHistory(pLeaf) }
---       } }
---   }
--- }
-
+  undefined
+--   (stillDirty, transitions) <- findDirt
+--   when stillDirty $ refine a ltree'
+--   where
+--     findDirt :: ST s (Bool, Transitions s)
+--     findDirt = foldrM go' False
+--       where
+--         go' :: (Bool, Transitions s) -> (Terminal s, Looping.MLeaf s) -> ST s (Bool, Transitions s)
+--         go' (dirt, transitions) (term, step) =
+--           -- check to see if this leaf is _not_ a terminal leaf
+--           if terminals ltree `S.member` step
+--           then pure (dirt, HM.insertWith (\new old -> old) term mempty transisions)
+--           else case step of
+--             Right subtree -> onRight subtree
+--             Left loop -> onLeft loop
+--           where
+--             -- FIXME: "if either of the above return None, else we have a sub-looping-tree and return Some.
+--             -- refine subtree"
+--             onRight subtree =
+--               case (terminalReference step) of
+--                 Nothing -> runRefinement -- loop is now dirty
+--                 Just _  -> pure (dirt, transitions)
+--
+--             runRefinement =
+--               mapM (refineWith term) torefine $
+--                 filter (not . S.member (terminals ltree)) $
+--                   collectLeaves ltree step
+--               >> pure (True, transitions)
+--               where
+--                 -- terminal nodes cannot be overwritten
+--                 torefine = filter (not . S.member (terminals ltree)) $ collectLeaves ltree step
+--
+--
+--             onLeft loop =
+--               -- if we find a "terminal-looping" node (ie- any looping node) that is not a terminal node:
+--               -- FIXME: if we find a "terminal-edgeSet" node: merge this node into the terminal node
+--               case terminalReference loop of
+--                 Just terminal -> do                             -- is already refined
+--                   _ <- addHistories terminal (histories loop)   -- merge this node into the terminal node
+--                   _ <- setTerminalReference loop terminal       -- FIXME: seems unnessecary
+--                   pure (dirt, terminals)                        -- continue with current isDirty value
+--
+--                 Nothing -> do                                   -- we have a non-terminating loop
+--                   void $ setTerminalReference loop loop         -- FIXME: seems unnessecary
+--                   void $ addTerminalToTree (terminals ltree) loop
+--                   -- FIXME: merge the loop's empirical observations as well - but maybe we should do this above...
+--                   -- ...at any rate, the loop is all we need to prototype this.
+--                   runRefinement
+--
+--       -- transitionGroups :: Transitions s -> [Set (Terminal s)]
+--       -- transitionGroups transitions = undefined
+--       --   -- // group by transitions
+--       --   -- .groupBy{ _._2 }
+--       --   -- // throw away transitions, look only at grouped terminals
+--       --   -- .mapValues(_.keySet)
+--       --   -- .values
+--       --   -- // split groups by matching distribution
+--
+--       -- toMerge :: ST s _
+--       -- toMerge = undefined -- mapM go transitionGroups
+--       --   -- where
+--       --   --   go :: Set (Terminal s) -> ST s _
+--       --   --   go (sortBy observed . toList -> ts) = do -- TODO: Sorting for debugging, but remove?
+--       --   --     let
+--       --   --       h = head ts
+--       --   --       t = tail ts
+--       --   --       hset = HS.singleton (head ts)
+--       --   --     _ <- setEdgeSet h hset
+--       --   --     -- just in case there are actually multiple edgsets found with matching transitions
+--         --     let
+--         --       filterfun :: Set (Terminal s) -> ST s Bool
+--         --       filterfun es = do
+--         --         matchFound <- not <$> readSTRef matchFound
+--         --         treeMatch <- Tree.matches(t)(es.head)
+--         --         pure $ m && Tree.matches(t)(es.head))
+--         --         !matchFound && Tree.matches(t)(es.head))
+--
+--         --       edgeSets :: ST s (Set[Set[Terminal]])
+--         --       edgeSets = foldrM (HS.singleton hset) $ \ess t -> do
+--         --         let
+--         --           filterfun :: Set (Terminal s) -> ST s Bool
+--         --           filterfun es = do
+--         --             matchNotFound <- not <$> readSTRef matchFound
+--         --             treeMatch <- Tree.matches t (head es)
+--         --             pure $ matchNotFound && treeMatch
+--
+--         --         forM (filter filterfun ess) $ \es -> do
+--         --           modifySTRef (HS.append t) es
+--         --           setEdgeSet t es
+--         --           matchFound
+--
+--
+--         --     // just in case there are actually multiple edgsets found with matching transitions
+--         --     val edgeSets:Set[Set[Terminal]] = tail.foldLeft(Set(newSet))((ess, t) => {
+--         --       var matchFound = false
+--
+--         --       for (es <- ess if !matchFound && Tree.matches(t)(es.head)) {
+--         --         es += t
+--         --         t.edgeSet = Some(es)
+--         --         matchFound = true
+--         --       }
+--
+--         --       if (matchFound) ess else {
+--         --         val newSet = mutable.Set(t)
+--         --         t.edgeSet = Some(newSet)
+--         --         ess ++ Set(newSet)
+--         --       }
+--         --     })
+--         --     .map(_.toSet)
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--         --       for (es <- ess if !matchFound && Tree.matches(t)(es.head)) {
+--         --         matchFound = true
+--         --       }
+--
+--         --       if (matchFound) ess else {
+--         --         val newSet = mutable.Set(t)
+--         --         t.edgeSet = Some(newSet)
+--         --         ess ++ Set(newSet)
+--         --       }
+--         --     })
+--         --     .map(_.toSet)
+--
+--
+--         --   (, tail ts)
+--
+--
+--         --   tSet => {
+--         --     -- val (head, tail) = unsafeHeadAnd(tSet.toList.sortBy(_.observed.mkString(ltree.alphabet.delim)))
+--         --     -- val newSet = mutable.Set(head)
+--         --     -- head.edgeSet = Some(newSet)
+--
+--         --                 edgeSets
+--         --   }
+--         -- }
+--         -- -- don't look at singleton groups
+--         -- .filter{ _.size > 1 }
+--
+--
+-- --       // perform final updates and merges
+-- --       toMerge
+-- --         .foreach {
+-- --           set:Set[Terminal] =>
+-- --             // holy moly we need to turn this into a dag and not a cyclic-linked-list-tree
+-- --             val (head:Terminal, tail:List[Terminal]) = unsafeHeadAnd(set.filter{_.parent.nonEmpty}.toList.sortBy(_.observed.mkString(ltree.alphabet.delim)))
+-- --             tail.foreach {
+-- --               node =>
+-- --                 node.parent.get.children.put(node.observation, Left(head))
+-- --                 ltree.terminals = ltree.terminals - node
+-- --             }
+-- --         }
+--
+-- --       stillDirty = stillDirty || toMerge.nonEmpty
+--
+-- --     } while (stillDirty)
+-- --   }
+--
+-- --   def headAnd [T] (l:List[T]):(Option[T], List[T]) = (l.headOption, l.tail)
+-- --   def unsafeHeadAnd [T] (l:List[T]):(T, List[T]) = (l.head, l.tail)
+--
+-- --   def collect(ptree: ParseTree, ltree:LoopingTree, depth:Int, states:Set[State], stateMap: Map[Terminal, State]):Unit = {
+-- --     val collectables = ptree.getDepth(depth) ++ ptree.getDepth(depth - 1)
+--
+-- --     collectables
+-- --       .foreach { pLeaf => {
+-- --         val maybeLLeaf = ltree.navigateToTerminal(pLeaf.observed, states.flatMap(_.terminals).toSet)
+-- --         val maybeState = maybeLLeaf.flatMap { terminal => stateMap.get(terminal) }
+--
+-- --         maybeState.foreach { state => state.addHistory(pLeaf) }
+-- --       } }
+-- --   }
+-- -- }
+--
