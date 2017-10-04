@@ -38,17 +38,37 @@ data Tree = Tree
 instance Eq Leaf where
   (Leaf b0 c0 _) == (Leaf b1 c1 _) = b0 == b1 && c0 == c1
 
+instance Show Tree where
+  show (Tree ts rt)
+    = unlines . mconcat $
+      [ [ "Looping.Tree"
+        , "\tterminals:"
+        ]
+      , showLeaf False <$> HS.toList ts
+      , [ "root:"
+        , show rt
+        ]
+      ]
+
 instance Show Leaf where
-  show (Leaf b c p) =
-    case b of
-      Right (LeafBody hs fs) -> strLeaf hs fs c
-      Left (Leaf b' _ _)     -> case b' of
-        Left _                 -> strErr c
-        Right (LeafBody hs fs) -> strLoop hs fs c
-    where
-      strErr        c = "Leaf{Loop(<error>), " ++ show c ++"}"
-      strLoop hs fs c = "Leaf{Loop(" ++ show hs ++ ", " ++ show fs ++ ", " ++ show c ++ ")}"
-      strLeaf hs fs c = "Leaf{"      ++ show hs ++ ", " ++ show fs ++ ", " ++ show c ++  "}"
+  show = showLeaf True
+
+showLeaf :: Bool -> Leaf -> String
+showLeaf full (Leaf b c p) =
+  case b of
+    Right (LeafBody hs fs) -> strLeaf hs fs c
+    Left (Leaf b' _ _) ->
+      case b' of
+        Right b -> strLoop (histories b) (frequency b) c
+        Left  _ -> strErr c
+  where
+    strErr        c = "Leaf{Loop(<error>), " ++ show c ++"}"
+    strLoop hs fs c = "Leaf{Loop(" ++ show hs ++ ", " ++ show fs ++ strChildren c ++ ")}"
+    strLeaf hs fs c = "Leaf{"      ++ show hs ++ ", " ++ show fs ++ strChildren c ++  "}"
+    strChildren c =
+      if full
+      then ", " ++ show c
+      else ""
 
 instance Probabilistic Leaf where
   frequency (Leaf b c p) =

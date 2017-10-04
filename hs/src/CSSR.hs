@@ -15,19 +15,21 @@ import Data.Tree.Hist as H
 import Control.Monad.ST
 
 
-cssr :: FilePath -> IO ()
-cssr filepath = do
+cssr :: Double -> Int -> FilePath -> IO ()
+cssr sig d filepath = do
   contents <- readFile filepath
   let
-    htree = initialization 1 contents
+    htree = initialization d contents
     ltree = runST $ do
-      lt' <- grow 0.01 htree
+      lt' <- grow sig htree
       refine (H.alphabet htree) lt'
       ML.freezeTree lt'
 
   print htree
-  -- print ltree
+  print ltree
   return ()
 
+defaultCSSR :: FilePath -> IO ()
+defaultCSSR = cssr 0.01 5
 
 
