@@ -4,6 +4,8 @@ module CSSR.Prelude
   , groupBy
   , identity
   , unsafeHead
+  , minimumBy
+  , unsafeMinimumBy
   , CSSR.Prelude.head
   , Locations
   , Idx
@@ -15,7 +17,7 @@ module CSSR.Prelude
 import Control.Arrow       as X
 import Control.Exception   as X
 import Control.Monad       as X
-import Data.Foldable       as X
+import Data.Foldable       as X hiding (minimumBy)
 import Data.Function       as X (on)
 import Data.List           as X (intercalate, nub, (\\), sortBy, delete)
 import Data.Maybe          as X (catMaybes)
@@ -34,11 +36,20 @@ import Lens.Micro.Internal as X
 import Prelude             as X hiding (id, head)
 
 import qualified Data.HashMap.Strict as HM
+import qualified Data.Foldable       as F
 import qualified Data.Vector         as V
 import qualified Prelude             as P
 
 identity :: a -> a
 identity = P.id
+
+unsafeMinimumBy :: Foldable t => (a -> a -> Ordering) -> t a -> a
+unsafeMinimumBy = F.minimumBy
+
+minimumBy :: Foldable t => (a -> a -> Ordering) -> t a -> Maybe a
+minimumBy f as
+  | null as   = Nothing
+  | otherwise = Just $ unsafeMinimumBy f as
 
 groupBy :: forall a b . (Hashable b, Eq b) => (a -> b) -> [a] -> [(b, [a])]
 groupBy fn = HM.toList . foldr step mempty

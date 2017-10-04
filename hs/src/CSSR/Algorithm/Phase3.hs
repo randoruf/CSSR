@@ -73,7 +73,7 @@ stepFromTerminal alpha (Looping.root->rt) term = foldrM go [] $ zip [0..] (toLis
   where
     w :: Vector Event
     w = view (_Just . Hist.bodyL . Hist.obsL) -- get the observed history from the representative history
-      . head . sortBy ordering . HS.toList    -- get the (ASSUMPTION) leaf with the least-sufficiency
+      . minimumBy ordering . HS.toList        -- get the (ASSUMPTION) leaf with the least-sufficiency
       $ Looping.histories term                -- get all histories from the terminal node
       where
         ordering :: Hist.Leaf -> Hist.Leaf -> Ordering
@@ -93,7 +93,7 @@ stepFromTerminal alpha (Looping.root->rt) term = foldrM go [] $ zip [0..] (toLis
 type Transitions s = HashMap (Terminal s) (HashSet (Looping.MLNode s))
 
 toCheck :: forall s . Alphabet -> Looping.MTree s -> ST s [(Looping.MLeaf s, Looping.MLNode s)]
-toCheck a tree = foldrM go mempty (terminals tree)
+toCheck a tree = terminals tree >>= foldrM go mempty
   where
     go :: Terminal s -> [(Terminal s, Looping.MLNode s)] -> ST s [(Terminal s, Looping.MLNode s)]
     go t memo
@@ -102,77 +102,89 @@ toCheck a tree = foldrM go mempty (terminals tree)
       . catMaybes  -- remove any terminals which truly terminate
       <$> stepFromTerminal a tree t
 
-    terminals :: Looping.MTree s -> [Looping.MLeaf s]
-    terminals = HS.toList . Looping.terminals
+    terminals :: Looping.MTree s -> ST s [Looping.MLeaf s]
+    terminals = fmap HS.toList . readSTRef . Looping.terminals
 
+collectLeaves :: Looping.MTree s -> Looping.MLeaf s -> HashSet (Looping.MLeaf s)
+collectLeaves ltree leaf = undefined
 
+-- SET change = true
+-- UNTIL change == false
+--   INIT transition map (terminal -> node)
+--
+--   FOR each terminal node (t)
+--     FOR each non-looping path w to t
+--       FOR each symbol a in the alphabet follow the path wa in the tree
+--         IF wa leads to a terminal node
+--         THEN store terminal's transition in transition map
+--         ELSEIF wa does not lead to a terminal node
+--           copy the sub-looping-tree rooted at (the node reached by) wa to t,
+--               giving all terminal nodes the predictive distribution of t
+--           store terminal's transition in transition map
+--           - continue
+--         ELSE
+--           ENDFOR (break inner-most loop)
+--         ENDIF
+--       ENDFOR
+--     ENDFOR
+--   ENDFOR
 refine :: forall s . Alphabet -> Looping.MTree s -> ST s ()
 refine a ltree = do
-  ts <- toCheck a ltree
-  (stillDirty, transitions) <- findDirt ts
-  when stillDirty $ refine a ltree
+  ts <- readSTRef $ Looping.terminals ltree
+  check <- toCheck a ltree
+  (stillDirty, transitions) <- foldrM (go ts) (False, mempty) check
+  when stillDirty (refine a ltree)
   where
-    findDirt :: [(Terminal s, Looping.MLNode s)] -> ST s (Bool, Transitions s)
-    findDirt = foldrM go (False, mempty)
+    inTerminals :: Looping.MLNode s -> HashSet (Terminal s) -> Bool
+    inTerminals = HS.member . either identity identity
+
+    -- IF wa leads to a terminal node
+    -- THEN store terminal's transition in transition map
+    storeTransitions :: HashSet (Terminal s) -> Bool -> Transitions s -> Terminal s -> Looping.MLeaf s -> ST s (Bool, Transitions s)
+    storeTransitions ts isDirty tmap term subtree = Looping.getTermRef subtree
+      >>= \case
+        Just _  -> pure (isDirty, tmap)
+        Nothing -> do -- loop is now dirty
+          runRefinement ts term subtree
+          pure (True, tmap)
+
+    -- terminal nodes cannot be overwritten
+    runRefinement :: HashSet (Terminal s) -> Terminal s -> Looping.MLeaf s -> ST s ()
+    runRefinement ts term step
+      = mapM_ (`Looping.setTermRef` term)
+      . filter (not . (`HS.member` ts))
+      . HS.toList
+      $ collectLeaves ltree step
+
+    go :: HashSet (Terminal s) -> (Terminal s, Looping.MLNode s) -> (Bool, Transitions s) -> ST s (Bool, Transitions s)
+    go ts (term, step) (dirt, transitions)
+      | step `inTerminals` ts = pure (dirt, HM.insertWith (\new old -> old) term mempty transitions)
+      | otherwise             = either (storeTransitions ts dirt transitions term) refineSubtree step
       where
-        go :: (Terminal s, Looping.MLNode s) -> (Bool, Transitions s) -> ST s (Bool, Transitions s)
-        go (term, step) (dirt, transitions) =
-          -- check to see if this leaf is _not_ a terminal leaf
-          if either identity identity step `HS.member` Looping.terminals ltree
-          then pure (dirt, HM.insertWith (\new old -> old) term mempty transitions)
-          else either onRight onLeft step
-          where
-            -- FIXME: "if either of the above return None, else we have a sub-looping-tree and return Some.
-            -- refine subtree"
-            onRight :: Looping.MLeaf s -> ST s (Bool, Transitions s)
-            onRight subtree =
-              case terminalReference step of
-                Nothing -> runRefinement >> pure (True, transitions) -- loop is now dirty
-                Just _  -> pure (dirt, transitions)
+        -- FIXME: "if either of the above return None, else we have a sub-looping-tree and return Some.
+        -- refine subtree"
+        addTerminalToTree = undefined
+        addHistories = undefined
 
-            runRefinement :: Monad m => m ()
-            runRefinement = mapM_ (refineWith term) torefine
-              where
-                -- terminal nodes cannot be overwritten
-                torefine = filter (not . HS.member (Looping.terminals ltree)) $ collectLeaves ltree step
+        -- ELSEIF wa does not lead to a terminal node
+        --   copy the sub-looping-tree rooted at (the node reached by) wa to t,
+        --       giving all terminal nodes the predictive distribution of t
+        --   store terminal's transition in transition map
+        --   - continue
+        refineSubtree :: Looping.MLeaf s -> ST s (Bool, Transitions s)
+        refineSubtree loop = Looping.getTermRef loop >>= \case
+          -- if we find a "terminal-looping" node (ie- any looping node) that is not a terminal node:
+          -- FIXME: if we find a "terminal-edgeSet" node: merge this node into the terminal node
+          Just t -> do                                     -- is already refined
+            _ <- addHistories t (Looping.histories loop)   -- merge this node into the terminal node
+            loop `Looping.setTermRef` t                    -- FIXME: seems unnessecary
+            pure (dirt, transitions)                       -- continue with current isDirty value
 
-            collectLeaves = undefined
-            refineWith = undefined
-            addTerminalToTree = undefined
-            addHistories = undefined
-            setTerminalReference = undefined
-            terminalReference = undefined
+          Nothing -> do                                    -- we have a non-terminating loop
+            loop `Looping.setTermRef` term                 -- FIXME: seems unnessecary
+            void $ addTerminalToTree (Looping.terminals ltree) loop
+            -- FIXME: merge the loop's empirical observations as well - but maybe we should do this above...
+            -- ...at any rate, the loop is all we need to prototype this.
+            runRefinement ts term loop
+            pure (True, transitions)
 
-            -- onLeft :: Monad m => Looping.MLeaf s -> m (Bool, Transitions s)
-            onLeft :: Looping.MLeaf s -> ST s (Bool, Transitions s)
-            onLeft loop =
-              -- if we find a "terminal-looping" node (ie- any looping node) that is not a terminal node:
-              -- FIXME: if we find a "terminal-edgeSet" node: merge this node into the terminal node
-              case terminalReference loop of
-                Just t -> do                             -- is already refined
-                  _ <- addHistories t (Looping.histories loop)   -- merge this node into the terminal node
-                  _ <- setTerminalReference loop t       -- FIXME: seems unnessecary
-                  pure (dirt, transitions)               -- continue with current isDirty value
-
-                Nothing -> do                                   -- we have a non-terminating loop
-                  void $ setTerminalReference loop loop         -- FIXME: seems unnessecary
-                  void $ addTerminalToTree (Looping.terminals ltree) loop
-                  -- FIXME: merge the loop's empirical observations as well - but maybe we should do this above...
-                  -- ...at any rate, the loop is all we need to prototype this.
-                  runRefinement
-                  pure (True, transitions)
-
-
--- --   def collect(ptree: ParseTree, ltree:LoopingTree, depth:Int, states:Set[State], stateMap: Map[Terminal, State]):Unit = {
--- --     val collectables = ptree.getDepth(depth) ++ ptree.getDepth(depth - 1)
---
--- --     collectables
--- --       .foreach { pLeaf => {
--- --         val maybeLLeaf = ltree.navigateToTerminal(pLeaf.observed, states.flatMap(_.terminals).toSet)
--- --         val maybeState = maybeLLeaf.flatMap { terminal => stateMap.get(terminal) }
---
--- --         maybeState.foreach { state => state.addHistory(pLeaf) }
--- --       } }
--- --   }
--- -- }
---

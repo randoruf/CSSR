@@ -58,7 +58,7 @@ grow sig (Hist.Tree _ a hRoot) = do
   ts <- newSTRef [rt]       -- INIT queue of active, unchecked nodes
   let q = S.singleton rt    -- QUEUE root
   go q ts
-  ts' <- HS.fromList <$> readSTRef ts
+  ts' <- newSTRef =<< HS.fromList <$> readSTRef ts
   pure $ ML.MTree ts' rt
   where
     go :: Seq (MLeaf s) -> STRef s [MLeaf s] -> ST s ()
@@ -72,11 +72,10 @@ grow sig (Hist.Tree _ a hRoot) = do
             cs' <- nextChilds                                 --     CONSTRUCT new looping nodes for all valid children (one for each symbol in
                                                               --               alphabet - must have empirical observation in dataset).
             let cs'' = fmap snd cs'
-            cs <-
-              (flip mapM) cs' $                               --     FOR each new node constructed
-                \(e, x) -> findLoops x >>= (pure . (e,))      --       COMPUTE excisability(node, looping tree)
+            cs <- forM cs' $                                  --     FOR each new node constructed
+              \(e, x) -> findLoops x >>= (pure . (e,))        --       COMPUTE excisability(node, looping tree)
             forM_ cs $
-              \(e, x) -> H.insert (ML.children active) e x    --       ADD all new looping nodes to children of active node (mapped by symbol)
+              uncurry (H.insert (ML.children active))         --       ADD all new looping nodes to children of active node (mapped by symbol)
             writeSTRef termsRef (cs'' <> delete active terms) --       ADD unexcisable children to queue (FIXME: what about edgesets?)
                                                               --   ENDIF
             go (next <> S.fromList cs'') termsRef             -- ENDWHILE
@@ -84,7 +83,7 @@ grow sig (Hist.Tree _ a hRoot) = do
         (active, next) = splitTerminals q
 
         splitTerminals :: Seq (MLeaf s) -> (MLeaf s, Seq (MLeaf s))
-        splitTerminals = ((flip S.index 0) *** identity) . S.splitAt 1
+        splitTerminals = ((`S.index` 0) *** identity) . S.splitAt 1
 
         -- COMPUTE excisability(node, looping tree)
         findLoops :: MLeaf s -> ST s (MLNode s)

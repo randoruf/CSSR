@@ -36,6 +36,13 @@ data MLeaf s = MLeaf
   , terminalReference :: STRef s (Maybe (MLeaf s))
   , hasEdgeset :: STRef s Bool
   }
+
+setTermRef :: MLeaf s -> Terminal s -> ST s ()
+setTermRef leaf t = modifySTRef (terminalReference leaf) (const $ Just t)
+
+getTermRef :: MLeaf s -> ST s (Maybe (Terminal s))
+getTermRef = readSTRef . terminalReference
+
 instance Hashable (MLeaf s) where
   hashWithSalt i a = hashWithSalt i (histories a, frequency a)
 
@@ -43,6 +50,7 @@ instance Probabilistic (MLeaf s) where
   frequency = frequency
 
 type Loop s = MLeaf s
+type Terminal s = MLeaf s
 
 type MLNode s = Either (Loop s) (MLeaf s)
 
@@ -61,9 +69,10 @@ instance Eq (MLeaf s) where
 
 
 data MTree s = MTree
-  { terminals :: HashSet (MLeaf s)
+  { terminals :: STRef s (HashSet (MLeaf s))
   , root :: MLeaf s
   }
+
 
 freeze :: forall s . MLeaf s -> ST s L.Leaf
 freeze ml = do
@@ -80,7 +89,7 @@ freeze ml = do
     withParent :: Maybe L.Leaf -> L.Leaf -> L.Leaf
     withParent p (L.Leaf bod cs _) = L.Leaf bod cs p
 
-    freezeHistories :: MLeaf s -> (HashSet Hist.Leaf)
+    freezeHistories :: MLeaf s -> HashSet Hist.Leaf
     freezeHistories = histories
 
     freezeDown :: [(Event, MLNode s)] -> ST s (HashMap Event L.Leaf)
