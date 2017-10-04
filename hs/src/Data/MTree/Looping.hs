@@ -36,7 +36,7 @@ data MLeaf s = MLeaf
   , hasEdgeset :: STRef s Bool
   }
 instance Hashable (MLeaf s) where
-  hashWithSalt i a = hashWithSalt i ()
+  hashWithSalt i a = hashWithSalt i (histories a, frequency a)
 
 instance Probabilistic (MLeaf s) where
   frequency = frequency
@@ -221,9 +221,9 @@ excisable sig ll = getAncestors ll >>= pure . go
   where
     go :: [MLeaf s] -> Maybe (MLeaf s)
     go     [] = Nothing
-    go (a:as) = do
+    go (a:as) =
       if Prob.matchesDists_ (frequency ll) (frequency a) sig
-      then (Just a)
+      then Just a
       else go as
 
 -- |
