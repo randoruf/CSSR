@@ -33,6 +33,7 @@ data MLeaf s = MLeaf
   , frequency :: Vector Integer -- TODO => benchmark this vs. mutable version
   , children :: C.HashTable s Event (MLNode s)
   , parent :: STRef s (Maybe (MLeaf s))
+  , terminalReference :: STRef s (Maybe (MLeaf s))
   , hasEdgeset :: STRef s Bool
   }
 instance Hashable (MLeaf s) where
@@ -107,6 +108,7 @@ mkLeaf p hs =
     <*> pure (foldr1 Prob.addFrequencies $ fmap (view (Hist.bodyL . Hist.frequencyL)) hs)
     <*> H.new
     <*> newSTRef p
+    <*> newSTRef Nothing
     <*> newSTRef False
 
 mkRoot :: Alphabet -> Hist.Leaf -> ST s (MLeaf s)
@@ -115,6 +117,7 @@ mkRoot (Alphabet vec _) hrt =
     <$> pure (HS.fromList [hrt])
     <*> pure (V.replicate (V.length vec) 0)
     <*> H.new
+    <*> newSTRef Nothing
     <*> newSTRef Nothing
     <*> newSTRef False
 
