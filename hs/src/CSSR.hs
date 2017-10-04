@@ -9,12 +9,25 @@ import CSSR.Prelude
 import CSSR.Algorithm.Phase1 (initialization)
 import CSSR.Algorithm.Phase2 (grow)
 import CSSR.Algorithm.Phase3 (refine)
+import Data.MTree.Looping as ML
+import Data.Tree.Looping as L
+import Data.Tree.Hist as H
+import Control.Monad.ST
+
 
 cssr :: FilePath -> IO ()
 cssr filepath = do
   contents <- readFile filepath
-  let histTree = initialization 1 contents
-  print histTree
+  let
+    htree = initialization 1 contents
+    ltree = runST $ do
+      lt' <- grow 0.01 htree
+      refine (H.alphabet htree) lt'
+      ML.freezeTree lt'
+
+  print htree
+  -- print ltree
   return ()
+
 
 

@@ -1,7 +1,5 @@
 {-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE LambdaCase #-}
 module Data.MTree.Looping where
 
@@ -43,6 +41,10 @@ setTermRef leaf t = modifySTRef (terminalReference leaf) (const $ Just t)
 getTermRef :: MLeaf s -> ST s (Maybe (Terminal s))
 getTermRef = readSTRef . terminalReference
 
+-- Don't do anything for now. Otherwise we loose a lot of purity.
+addHistories :: MLeaf s -> HashSet Hist.Leaf -> ST s ()
+addHistories leaf hs = pure ()
+
 instance Hashable (MLeaf s) where
   hashWithSalt i a = hashWithSalt i (histories a, frequency a)
 
@@ -72,6 +74,16 @@ data MTree s = MTree
   { terminals :: STRef s (HashSet (MLeaf s))
   , root :: MLeaf s
   }
+
+addTerminal :: MTree s -> Terminal s -> ST s ()
+addTerminal tree term = modifySTRef (terminals tree) (HS.insert term)
+
+
+freezeTree :: MTree s -> ST s L.Tree
+freezeTree tree
+  = L.Tree
+  <$> pure mempty
+  <*> freeze (root tree)
 
 
 freeze :: forall s . MLeaf s -> ST s L.Leaf
