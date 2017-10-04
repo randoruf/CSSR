@@ -24,7 +24,7 @@
 {-# LANGUAGE LambdaCase #-}
 module CSSR.Algorithm.Phase2 where
 
-
+import CSSR.Prelude
 import Data.MTree.Looping as ML
 import qualified Data.Tree.Hist as Hist
 import qualified Data.Sequence as S
@@ -98,11 +98,11 @@ grow sig (Hist.Tree _ a hRoot) = do
         --    observation in dataset).
         nextChilds :: ST s [(Event, MLeaf s)]
         nextChilds =
-          activeHistories >>=
+          pure activeHistories >>=
           traverse (\(e, _hs) -> (e,) <$> activeAsLeaf _hs) . groupHistory
           where
-            activeHistories :: ST s [Hist.Leaf]
-            activeHistories = (fmap.fmap) fst . H.toList . ML.histories $ active
+            activeHistories :: [Hist.Leaf]
+            activeHistories = HS.toList . ML.histories $ active
 
             activeAsLeaf :: [Hist.Leaf] -> ST s (MLeaf s)
             activeAsLeaf _hs = ML.mkLeaf (Just active) _hs

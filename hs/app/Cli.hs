@@ -1,5 +1,6 @@
 module Cli where
 
+import CSSR.Prelude
 import Options.Applicative
 import Data.List (intercalate)
 import Data.Monoid ((<>))

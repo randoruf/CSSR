@@ -43,29 +43,27 @@
 --   + if we let a terminal node's distribution override another terminal node's
 --       distribution (via subtree) will order matter?
 -------------------------------------------------------------------------------
+
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module CSSR.Algorithm.Phase3 where
 
-import qualified Data.Tree.Looping as Looping (Tree)
-import qualified Data.MTree.Looping as Looping
--- import qualified Data.Tree.Looping as Looping hiding (histories, children)
-import qualified Data.Vector as V
-import qualified Data.MTree.Parse as M
-import qualified Data.Tree.Parse as P
-import qualified Data.Tree.Hist as Hist
-import qualified Data.MTree.Parse as MHist
--- import qualified Data.HashSet as HS
 import Data.Alphabet
-import Data.Set (Set)
-import qualified Data.Set as S
-
 import CSSR.Prelude.Mutable
-import qualified Data.HashMap.Strict as HM
-import qualified Data.HashTable.ST.Cuckoo as C
-import Debug.Trace
 import CSSR.Probabilistic
+
+import qualified Data.Tree.Looping  as Looping (Tree)
+import qualified Data.MTree.Looping as Looping
+import qualified Data.MTree.Parse   as M
+import qualified Data.Tree.Parse    as P
+import qualified Data.Tree.Hist     as Hist
+import qualified Data.MTree.Parse   as MHist
+
+import qualified Data.Set as S
+import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
+import qualified Data.Vector as V
+
 
 type Terminal = Looping.MLeaf
 
@@ -73,12 +71,17 @@ type Terminal = Looping.MLeaf
 stepFromTerminal :: forall s . Alphabet -> Looping.MTree s -> Terminal s -> ST s [Maybe (Looping.MLeaf s)]
 stepFromTerminal alpha (Looping.root->rt) term = foldrM go [] $ zip [0..] (toList (distribution term))
   where
-    w' :: ST s (Vector Event)
-    w' = view (_Just . _2 . Hist.bodyL . Hist.obsL) <$> C.nextByIndex (Looping.histories term) 0
+    w :: Vector Event
+    w = view (_Just . Hist.bodyL . Hist.obsL) lcd
+      where
+        lcd :: Maybe Hist.Leaf
+        lcd = head . sortBy ordering . HS.toList $ Looping.histories term
+
+        ordering :: Hist.Leaf -> Hist.Leaf -> Ordering
+        ordering = compare `on` (length . view (Hist.bodyL . Hist.obsL))
 
     navigateToNext :: Int -> ST s (Maybe (Looping.MLeaf s))
     navigateToNext i = do
-      w <- w'
       mnext <- Looping.walk (Right rt) (w `V.snoc` (idxToSym alpha ! i))
       pure $ fmap (either identity identity) mnext
 
@@ -154,125 +157,6 @@ refine a ltree' = do
 --                   -- FIXME: merge the loop's empirical observations as well - but maybe we should do this above...
 --                   -- ...at any rate, the loop is all we need to prototype this.
 --                   runRefinement
---
---       -- transitionGroups :: Transitions s -> [Set (Terminal s)]
---       -- transitionGroups transitions = undefined
---       --   -- // group by transitions
---       --   -- .groupBy{ _._2 }
---       --   -- // throw away transitions, look only at grouped terminals
---       --   -- .mapValues(_.keySet)
---       --   -- .values
---       --   -- // split groups by matching distribution
---
---       -- toMerge :: ST s _
---       -- toMerge = undefined -- mapM go transitionGroups
---       --   -- where
---       --   --   go :: Set (Terminal s) -> ST s _
---       --   --   go (sortBy observed . toList -> ts) = do -- TODO: Sorting for debugging, but remove?
---       --   --     let
---       --   --       h = head ts
---       --   --       t = tail ts
---       --   --       hset = HS.singleton (head ts)
---       --   --     _ <- setEdgeSet h hset
---       --   --     -- just in case there are actually multiple edgsets found with matching transitions
---         --     let
---         --       filterfun :: Set (Terminal s) -> ST s Bool
---         --       filterfun es = do
---         --         matchFound <- not <$> readSTRef matchFound
---         --         treeMatch <- Tree.matches(t)(es.head)
---         --         pure $ m && Tree.matches(t)(es.head))
---         --         !matchFound && Tree.matches(t)(es.head))
---
---         --       edgeSets :: ST s (Set[Set[Terminal]])
---         --       edgeSets = foldrM (HS.singleton hset) $ \ess t -> do
---         --         let
---         --           filterfun :: Set (Terminal s) -> ST s Bool
---         --           filterfun es = do
---         --             matchNotFound <- not <$> readSTRef matchFound
---         --             treeMatch <- Tree.matches t (head es)
---         --             pure $ matchNotFound && treeMatch
---
---         --         forM (filter filterfun ess) $ \es -> do
---         --           modifySTRef (HS.append t) es
---         --           setEdgeSet t es
---         --           matchFound
---
---
---         --     // just in case there are actually multiple edgsets found with matching transitions
---         --     val edgeSets:Set[Set[Terminal]] = tail.foldLeft(Set(newSet))((ess, t) => {
---         --       var matchFound = false
---
---         --       for (es <- ess if !matchFound && Tree.matches(t)(es.head)) {
---         --         es += t
---         --         t.edgeSet = Some(es)
---         --         matchFound = true
---         --       }
---
---         --       if (matchFound) ess else {
---         --         val newSet = mutable.Set(t)
---         --         t.edgeSet = Some(newSet)
---         --         ess ++ Set(newSet)
---         --       }
---         --     })
---         --     .map(_.toSet)
---
---
---
---
---
---
---
---
---
---
---         --       for (es <- ess if !matchFound && Tree.matches(t)(es.head)) {
---         --         matchFound = true
---         --       }
---
---         --       if (matchFound) ess else {
---         --         val newSet = mutable.Set(t)
---         --         t.edgeSet = Some(newSet)
---         --         ess ++ Set(newSet)
---         --       }
---         --     })
---         --     .map(_.toSet)
---
---
---         --   (, tail ts)
---
---
---         --   tSet => {
---         --     -- val (head, tail) = unsafeHeadAnd(tSet.toList.sortBy(_.observed.mkString(ltree.alphabet.delim)))
---         --     -- val newSet = mutable.Set(head)
---         --     -- head.edgeSet = Some(newSet)
---
---         --                 edgeSets
---         --   }
---         -- }
---         -- -- don't look at singleton groups
---         -- .filter{ _.size > 1 }
---
---
--- --       // perform final updates and merges
--- --       toMerge
--- --         .foreach {
--- --           set:Set[Terminal] =>
--- --             // holy moly we need to turn this into a dag and not a cyclic-linked-list-tree
--- --             val (head:Terminal, tail:List[Terminal]) = unsafeHeadAnd(set.filter{_.parent.nonEmpty}.toList.sortBy(_.observed.mkString(ltree.alphabet.delim)))
--- --             tail.foreach {
--- --               node =>
--- --                 node.parent.get.children.put(node.observation, Left(head))
--- --                 ltree.terminals = ltree.terminals - node
--- --             }
--- --         }
---
--- --       stillDirty = stillDirty || toMerge.nonEmpty
---
--- --     } while (stillDirty)
--- --   }
---
--- --   def headAnd [T] (l:List[T]):(Option[T], List[T]) = (l.headOption, l.tail)
--- --   def unsafeHeadAnd [T] (l:List[T]):(T, List[T]) = (l.head, l.tail)
 --
 -- --   def collect(ptree: ParseTree, ltree:LoopingTree, depth:Int, states:Set[State], stateMap: Map[Terminal, State]):Unit = {
 -- --     val collectables = ptree.getDepth(depth) ++ ptree.getDepth(depth - 1)

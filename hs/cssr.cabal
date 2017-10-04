@@ -23,7 +23,7 @@ source-repository head
 library
   hs-source-dirs:
       src
-  default-extensions: MultiParamTypeClasses OverloadedStrings PatternSynonyms TypeFamilies ViewPatterns LambdaCase
+  default-extensions: MultiParamTypeClasses OverloadedStrings PatternSynonyms TypeFamilies ViewPatterns LambdaCase NoImplicitPrelude
   ghc-options: -fno-warn-name-shadowing
   build-depends:
       base
@@ -68,7 +68,7 @@ executable schema-prediction
   main-is: Main.hs
   hs-source-dirs:
       app
-  default-extensions: MultiParamTypeClasses OverloadedStrings PatternSynonyms TypeFamilies ViewPatterns LambdaCase
+  default-extensions: MultiParamTypeClasses OverloadedStrings PatternSynonyms TypeFamilies ViewPatterns LambdaCase NoImplicitPrelude
   ghc-options: -fno-warn-name-shadowing
   build-depends:
       base
@@ -95,7 +95,7 @@ executable schema-prediction
 test-suite doctest
   type: exitcode-stdio-1.0
   main-is: doctest.hs
-  default-extensions: MultiParamTypeClasses OverloadedStrings PatternSynonyms TypeFamilies ViewPatterns LambdaCase
+  default-extensions: MultiParamTypeClasses OverloadedStrings PatternSynonyms TypeFamilies ViewPatterns LambdaCase NoImplicitPrelude
   ghc-options: -fno-warn-name-shadowing
   build-depends:
       base
@@ -123,7 +123,7 @@ test-suite spec
   main-is: Spec.hs
   hs-source-dirs:
       test
-  default-extensions: MultiParamTypeClasses OverloadedStrings PatternSynonyms TypeFamilies ViewPatterns LambdaCase
+  default-extensions: MultiParamTypeClasses OverloadedStrings PatternSynonyms TypeFamilies ViewPatterns LambdaCase NoImplicitPrelude
   ghc-options: -fno-warn-name-shadowing
   build-depends:
       base
@@ -155,7 +155,7 @@ benchmark bench
   main-is: Main.hs
   hs-source-dirs:
       bench
-  default-extensions: MultiParamTypeClasses OverloadedStrings PatternSynonyms TypeFamilies ViewPatterns LambdaCase
+  default-extensions: MultiParamTypeClasses OverloadedStrings PatternSynonyms TypeFamilies ViewPatterns LambdaCase NoImplicitPrelude
   ghc-options: -fno-warn-name-shadowing -O2
   build-depends:
       base

@@ -5,6 +5,7 @@
 -------------------------------------------------------------------------------
 module CSSR (cssr) where
 
+import CSSR.Prelude
 import CSSR.Algorithm.Phase1 (initialization)
 import CSSR.Algorithm.Phase2 (grow)
 import CSSR.Algorithm.Phase3 (refine)

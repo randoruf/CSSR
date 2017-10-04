@@ -29,14 +29,14 @@ type HashTableSet s a = C.HashTable s a Bool
 
 data MLeaf s = MLeaf
   -- for lack of a mutable hash set implementation
-  { histories :: HashTableSet s Hist.Leaf
+  { histories :: HashSet Hist.Leaf
   , frequency :: Vector Integer -- TODO => benchmark this vs. mutable version
   , children :: C.HashTable s Event (MLNode s)
   , parent :: STRef s (Maybe (MLeaf s))
   , hasEdgeset :: STRef s Bool
   }
 instance Hashable (MLeaf s) where
-  hashWithSalt = undefined
+  hashWithSalt i a = hashWithSalt i ()
 
 instance Probabilistic (MLeaf s) where
   frequency = frequency
@@ -66,10 +66,10 @@ data MTree s = MTree
 
 freeze :: forall s . MLeaf s -> ST s L.Leaf
 freeze ml = do
-  hs <- freezeHistories ml
+  -- hs <- freezeHistories ml
   let f = frequency ml
   cs <- freezeDown =<< (H.toList . children $ ml)
-  let cur = L.Leaf (Right (L.LeafBody hs f)) cs Nothing
+  let cur = L.Leaf (Right (L.LeafBody (histories ml) f)) cs Nothing
   return $ withChilds cur (HM.map (withParent (Just cur)) cs)
 
   where
@@ -79,8 +79,8 @@ freeze ml = do
     withParent :: Maybe L.Leaf -> L.Leaf -> L.Leaf
     withParent p (L.Leaf bod cs _) = L.Leaf bod cs p
 
-    freezeHistories :: MLeaf s -> ST s (HashSet Hist.Leaf)
-    freezeHistories = fmap (HS.fromList . fmap fst) . H.toList . histories
+    freezeHistories :: MLeaf s -> (HashSet Hist.Leaf)
+    freezeHistories = histories
 
     freezeDown :: [(Event, MLNode s)] -> ST s (HashMap Event L.Leaf)
     freezeDown cs = do
@@ -90,19 +90,20 @@ freeze ml = do
         icer :: (Event, MLNode s) -> ST s (Event, L.Leaf)
         icer (e, Left lp) = do
           let f = frequency lp
-          hs <- (fmap.fmap) fst $ H.toList (histories lp)
+          -- hs <- (fmap.fmap) fst $ H.toList (histories lp)
           c <- freeze lp
           return (e, c)
+
         icer (e, Right lp) = do
           c <- freeze lp
-          hs <- (fmap.fmap) fst $ H.toList (histories lp)
+          -- hs <- (fmap.fmap) fst $ H.toList (histories lp)
           return (e, c)
 
 
 mkLeaf :: Maybe (MLeaf s) -> [Hist.Leaf] -> ST s (MLeaf s)
 mkLeaf p hs =
   MLeaf
-    <$> H.fromList (fmap (, True) hs)
+    <$> pure (HS.fromList hs) -- (fmap (, True) hs)
     <*> pure (foldr1 Prob.addFrequencies $ fmap (view (Hist.bodyL . Hist.frequencyL)) hs)
     <*> H.new
     <*> newSTRef p
@@ -111,7 +112,7 @@ mkLeaf p hs =
 mkRoot :: Alphabet -> Hist.Leaf -> ST s (MLeaf s)
 mkRoot (Alphabet vec _) hrt =
   MLeaf
-    <$> H.fromList [(hrt, True)]
+    <$> pure (HS.fromList [hrt])
     <*> pure (V.replicate (V.length vec) 0)
     <*> H.new
     <*> newSTRef Nothing
@@ -180,11 +181,12 @@ markEdgeSets terminals leaf = do
 --
 isHomogeneous :: forall s . Double -> MLeaf s -> ST s Bool
 isHomogeneous sig ll = do
-  hs <- (fmap.fmap) (view Hist.childrenL . fst) ll'
+  let hs = fmap (view Hist.childrenL) ll'
+  -- hs <- (fmap.fmap) (view Hist.childrenL . fst) ll'
   foldrM step True $ HS.fromList (hs >>= HM.elems)
   where
-    ll' :: ST s [(Hist.Leaf, Bool)]
-    ll' = H.toList (histories ll)
+    ll' :: [Hist.Leaf]
+    ll' = HS.toList (histories ll)
 
     step :: Hist.Leaf -> Bool -> ST s Bool
     step pc = \case

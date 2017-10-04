@@ -7,6 +7,7 @@
 -------------------------------------------------------------------------------
 module CSSR.Algorithm.Phase1 where
 
+import CSSR.Prelude
 import qualified Data.Text    as T
 import qualified Data.Vector  as V
 
@@ -15,8 +16,6 @@ import qualified Data.MTree.Parse   as M
 import qualified Data.Tree.Parse    as P
 import qualified Data.Tree.Hist     as Hist
 import qualified Data.MTree.Parse   as MHist
-
-import Debug.Trace
 
 
 -------------------------------------------------------------------------------

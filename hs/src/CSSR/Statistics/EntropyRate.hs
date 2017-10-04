@@ -1,5 +1,7 @@
 module CSSR.Statistics.EntropyRate where
 
+import CSSR.Prelude
+
 type Probability = Double
 type Frequency = Integer
 type ProbabilityDistribution = [Probability]

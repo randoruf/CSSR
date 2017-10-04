@@ -1,5 +1,7 @@
 module CSSR.Statistics.F1 where
 
+import CSSR.Prelude
+
 f1 :: Foldable f => f Double -> f Double -> Double
 f1 truth pred = 2 * (precision' * recall') / (precision' + recall')
   where

@@ -3,15 +3,7 @@ title: Top-level CSSR explainer (via patat)
 author: Sam Stites
 -----------
 
-Overview:
-- [ ] Introduction
---> [ ] Other variations
---> [ ] ROCS
-- [ ] Phase 1
---> [ ] Time series
---> [ ] Conditional Probabilities -> Data Structures
-- [ ] Phase 2
-- [ ] Phase 3
+Stuff
 
 -----------
 
