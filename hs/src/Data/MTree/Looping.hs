@@ -20,6 +20,8 @@ import qualified Data.Vector.Mutable       as MV
 import qualified Data.Vector.Generic       as GV
 import qualified Data.HashTable.ST.Cuckoo  as C
 import qualified Data.HashTable.Class      as H
+import qualified Data.Set as S
+
 
 -------------------------------------------------------------------------------
 -- Mutable Looping Tree ADTs
@@ -28,16 +30,16 @@ type HashTableSet s a = C.HashTable s a Bool
 
 data MLeaf s = MLeaf
   -- for lack of a mutable hash set implementation
-  { histories :: HashSet Hist.Leaf
-  , frequency :: Vector Integer -- TODO => benchmark this vs. mutable version
+  { histories :: STRef s (HashSet Hist.Leaf)
+  , frequency :: STRef s (Vector Integer)
   , children :: C.HashTable s Event (MLNode s)
   , parent :: STRef s (Maybe (MLeaf s))
   , terminalReference :: STRef s (Maybe (MLeaf s))
   , hasEdgeset :: STRef s Bool
   }
 
-instance Show (MLeaf s) where
-  show = showMLeaf
+instance Ord (MLeaf s) where
+
 
 setTermRef :: MLeaf s -> Terminal s -> ST s ()
 setTermRef leaf t = modifySTRef (terminalReference leaf) (const $ Just t)
@@ -45,21 +47,13 @@ setTermRef leaf t = modifySTRef (terminalReference leaf) (const $ Just t)
 getTermRef :: MLeaf s -> ST s (Maybe (Terminal s))
 getTermRef = readSTRef . terminalReference
 
-showMLeaf :: MLeaf s -> String
-showMLeaf m = show ( m, frequency m)
-  where
-    histObs :: [Vector Event]
-    histObs = (Hist.obs . Hist.body) <$> (HS.toList $ histories m)
-
 -- Don't do anything for now. Otherwise we loose a lot of purity.
 addHistories :: MLeaf s -> HashSet Hist.Leaf -> ST s ()
 addHistories leaf hs = pure ()
 
-instance Hashable (MLeaf s) where
-  hashWithSalt i a = hashWithSalt i (histories a, frequency a)
 
-instance Probabilistic (MLeaf s) where
-  frequency = frequency
+-- instance Probabilistic (MLeaf s) where
+--   frequency_ = readSTRef . frequency
 
 type Loop s = MLeaf s
 type Terminal s = MLeaf s
@@ -81,29 +75,28 @@ instance Eq (MLeaf s) where
 
 
 data MTree s = MTree
-  { terminals :: STRef s (HashSet (MLeaf s))
+  { terminals :: STRef s (Set (Terminal s))
   , root :: MLeaf s
   }
 
 addTerminal :: MTree s -> Terminal s -> ST s ()
-addTerminal tree term = modifySTRef (terminals tree) (HS.insert term)
-
+addTerminal tree term = modifySTRef (terminals tree) (S.insert term)
 
 freezeTree :: forall s . MTree s -> ST s L.Tree
 freezeTree tree = L.Tree
   <$> (readSTRef (terminals tree) >>= freezeTerms)
   <*> freeze (root tree)
   where
-    freezeTerms :: HashSet (MLeaf s) -> ST s (HashSet L.Leaf)
-    freezeTerms = fmap HS.fromList . mapM freeze . HS.toList
+    freezeTerms :: Set (MLeaf s) -> ST s (HashSet L.Leaf)
+    freezeTerms = fmap HS.fromList . mapM freeze . S.toList
 
 
 freeze :: forall s . MLeaf s -> ST s L.Leaf
 freeze ml = do
-  -- hs <- freezeHistories ml
-  let f = frequency ml
+  f <- readSTRef (frequency ml)
   cs <- freezeDown =<< (H.toList . children $ ml)
-  let cur = L.Leaf (Right (L.LeafBody (histories ml) f)) cs Nothing
+  hs <- readSTRef (histories ml)
+  let cur = L.Leaf (Right (L.LeafBody hs f)) cs Nothing
   return $ withChilds cur (HM.map (withParent (Just cur)) cs)
 
   where
@@ -112,9 +105,6 @@ freeze ml = do
 
     withParent :: Maybe L.Leaf -> L.Leaf -> L.Leaf
     withParent p (L.Leaf bod cs _) = L.Leaf bod cs p
-
-    freezeHistories :: MLeaf s -> HashSet Hist.Leaf
-    freezeHistories = histories
 
     freezeDown :: [(Event, MLNode s)] -> ST s (HashMap Event L.Leaf)
     freezeDown cs = do
@@ -137,8 +127,8 @@ freeze ml = do
 mkLeaf :: Maybe (MLeaf s) -> [Hist.Leaf] -> ST s (MLeaf s)
 mkLeaf p hs =
   MLeaf
-    <$> pure (HS.fromList hs) -- (fmap (, True) hs)
-    <*> pure (foldr1 Prob.addFrequencies $ fmap (view (Hist.bodyL . Hist.frequencyL)) hs)
+    <$> newSTRef (HS.fromList hs) -- (fmap (, True) hs)
+    <*> newSTRef (foldr1 Prob.addFrequencies $ fmap (view (Hist.bodyL . Hist.frequencyL)) hs)
     <*> H.new
     <*> newSTRef p
     <*> newSTRef Nothing
@@ -147,8 +137,8 @@ mkLeaf p hs =
 mkRoot :: Alphabet -> Hist.Leaf -> ST s (MLeaf s)
 mkRoot (Alphabet vec _) hrt =
   MLeaf
-    <$> pure (HS.fromList [hrt])
-    <*> pure (V.replicate (V.length vec) 0)
+    <$> newSTRef (HS.fromList [hrt])
+    <*> newSTRef (V.replicate (V.length vec) 0)
     <*> H.new
     <*> newSTRef Nothing
     <*> newSTRef Nothing
@@ -199,7 +189,7 @@ markEdgeSets terminals leaf = do
     edgeset ancestors = fmap nub . filterM identicalDist $ terminals \\ ancestors
 
     distributionST :: MLeaf s -> ST s (Vector Double)
-    distributionST lf = pure $ Prob.freqToDist (frequency lf)
+    distributionST lf = Prob.freqToDist <$> readSTRef (frequency lf)
 
 
 -- | === Homogeneity
@@ -215,11 +205,22 @@ markEdgeSets terminals leaf = do
 --   ENDFOR
 --   RETURN TRUE
 --
-isHomogeneous :: forall s . Double -> MLeaf s -> Bool
-isHomogeneous sig ll = I.isHomogeneous sig childHists Prob.frequency ll
+isHomogeneous :: forall s . Double -> MLeaf s -> ST s Bool
+isHomogeneous sig ll = do
+  pdist <- readSTRef $ frequency ll
+  childs <- childHists ll
+  pure $ all (cMatchesP pdist . Prob.frequency) childs
   where
-    childHists :: MLeaf s -> [Hist.Leaf]
-    childHists = foldMap (HM.elems . Hist.children) . HS.toList . histories
+    childHists :: MLeaf s -> ST s [Hist.Leaf]
+    childHists
+      = fmap (foldMap (HM.elems . Hist.children) . HS.toList)
+      . readSTRef . histories
+
+    cMatchesP :: Vector Integer -> Vector Integer -> Bool
+    cMatchesP pdist cdist = Prob.matchesDists_ pdist cdist sig
+
+
+
 
 
 -- | === Excisability
@@ -245,13 +246,15 @@ isHomogeneous sig ll = I.isHomogeneous sig childHists Prob.frequency ll
 -- >>> ptree
 --
 excisable :: forall s . Double -> MLeaf s -> ST s (Maybe (MLeaf s))
-excisable sig ll = getAncestors ll >>= pure . go
+excisable sig ll = getAncestors ll >>= go
   where
-    go :: [MLeaf s] -> Maybe (MLeaf s)
-    go     [] = Nothing
-    go (a:as) =
-      if Prob.matchesDists_ (frequency ll) (frequency a) sig
-      then Just a
+    go :: [MLeaf s] -> ST s (Maybe (MLeaf s))
+    go     [] = pure Nothing
+    go (a:as) = do
+      af <- readSTRef (frequency a)
+      llf <- readSTRef (frequency ll)
+      if Prob.matchesDists_ llf af sig
+      then pure $ Just a
       else go as
 
 -- |

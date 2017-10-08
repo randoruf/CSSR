@@ -23,20 +23,19 @@ import qualified Data.Vector as V
 --   RETURN TRUE
 --
 isHomogeneous
-  :: (Probabilistic parent, Probabilistic child)
-  => Double
-  -> (parent -> [child])
+  :: (parent -> [child])
   -> (child -> Vector Integer)
-  -> parent
+  -> Double
+  -> (parent, Vector Integer)
   -> Bool
-isHomogeneous sig getChildren child2dist parent = trace ("foot" <> show (length (getChildren parent))) $
+isHomogeneous getChildren child2dist sig (parent, pdist) =
   all (cMatchesP . child2dist)
   . getChildren
   $ parent
 
  where
   cMatchesP :: Vector Integer -> Bool
-  cMatchesP cdist = Prob.matchesDists_ (Prob.frequency parent) cdist sig
+  cMatchesP cdist = Prob.matchesDists_ pdist cdist sig
 
 
 navigate :: forall lf . (lf -> Event -> Maybe lf) -> lf -> Vector Event -> Maybe lf

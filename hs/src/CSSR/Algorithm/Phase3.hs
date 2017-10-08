@@ -43,7 +43,6 @@
 --   + if we let a terminal node's distribution override another terminal node's
 --       distribution (via subtree) will order matter?
 -------------------------------------------------------------------------------
-
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module CSSR.Algorithm.Phase3 where
@@ -62,24 +61,30 @@ import qualified Data.Set as S
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import qualified Data.Vector as V
+import Data.Map (Map)
+import qualified Data.Map as Map
+
 
 
 type Terminal = L.MLeaf
 
 
 stepFromTerminal :: forall s . Alphabet -> L.MTree s -> Terminal s -> ST s [Maybe (L.MLNode s)]
-stepFromTerminal alpha (L.root->rt) term = foldrM go [] $ zip [0..] (toList (distribution term))
+stepFromTerminal alpha (L.root->rt) term = do
+  dist <- toList . freqToDist <$> readSTRef (L.frequency term)
+  foldrM go [] $ zip [0..] dist
   where
-    w :: Vector Event
-    w = view (_Just . Hist.bodyL . Hist.obsL) -- get the observed history from the representative history
+    w' :: ST s (Vector Event)
+    w' = view (_Just . Hist.bodyL . Hist.obsL) -- get the observed history from the representative history
       . minimumBy ordering . HS.toList        -- get the (ASSUMPTION) leaf with the least-sufficiency
-      $ L.histories term                -- get all histories from the terminal node
+      <$> readSTRef (L.histories term)        -- get all histories from the terminal node
       where
         ordering :: Hist.Leaf -> Hist.Leaf -> Ordering
         ordering = compare `on` (length . view (Hist.bodyL . Hist.obsL))
 
     navigateToNext :: Int -> ST s (Maybe (L.MLNode s))
     navigateToNext i = do
+      w <- w'
       mnext <- L.walk (Right rt) (w `V.snoc` (idxToSym alpha ! i))
       pure mnext
 
@@ -89,7 +94,7 @@ stepFromTerminal alpha (L.root->rt) term = foldrM go [] $ zip [0..] (toList (dis
        | otherwise = pure acc
 
 
-type Transitions s = HashMap (Terminal s) (HashSet (L.MLNode s))
+type Transitions s = Map (Terminal s) (Set (L.MLNode s))
 
 toCheck :: forall s . Alphabet -> L.MTree s -> ST s [(L.MLeaf s, L.MLNode s)]
 toCheck a tree = terminals tree >>= foldrM go mempty
@@ -101,10 +106,10 @@ toCheck a tree = terminals tree >>= foldrM go mempty
       . catMaybes  -- remove any terminals which truly terminate
       <$> stepFromTerminal a tree t
 
-    terminals :: L.MTree s -> ST s [L.MLeaf s]
-    terminals = fmap HS.toList . readSTRef . L.terminals
+    terminals :: L.MTree s -> ST s (Set (L.MLeaf s))
+    terminals = readSTRef . L.terminals
 
-collectLeaves :: L.MTree s -> L.MLeaf s -> HashSet (L.MLeaf s)
+collectLeaves :: L.MTree s -> L.MLeaf s -> Set (L.MLeaf s)
 collectLeaves tree leaf = undefined
 
 -- SET change = true
@@ -134,12 +139,12 @@ refine a tree = do
   (stillDirty, transitions) <- foldrM (go ts) (False, mempty) check
   when stillDirty (refine a tree)
   where
-    inTerminals :: L.MLNode s -> HashSet (Terminal s) -> Bool
-    inTerminals = HS.member . either identity identity
+    inTerminals :: L.MLNode s -> Set (Terminal s) -> Bool
+    inTerminals = S.member . either identity identity
 
     -- IF wa leads to a terminal node
     -- THEN store terminal's transition in transition map
-    storeTransitions :: HashSet (Terminal s) -> Bool -> Transitions s -> Terminal s -> L.MLeaf s -> ST s (Bool, Transitions s)
+    storeTransitions :: Set (Terminal s) -> Bool -> Transitions s -> Terminal s -> L.MLeaf s -> ST s (Bool, Transitions s)
     storeTransitions ts isDirty tmap term subtree = L.getTermRef subtree
       >>= \case
         Just _  -> pure (isDirty, tmap)
@@ -148,16 +153,16 @@ refine a tree = do
           pure (True, tmap)
 
     -- terminal nodes cannot be overwritten
-    runRefinement :: HashSet (Terminal s) -> Terminal s -> L.MLeaf s -> ST s ()
+    runRefinement :: Set (Terminal s) -> Terminal s -> L.MLeaf s -> ST s ()
     runRefinement ts term step
       = mapM_ (`L.setTermRef` term)
-      . filter (not . (`HS.member` ts))
-      . HS.toList
+      . filter (not . (`S.member` ts))
+      . S.toList
       $ collectLeaves tree step
 
-    go :: HashSet (Terminal s) -> (Terminal s, L.MLNode s) -> (Bool, Transitions s) -> ST s (Bool, Transitions s)
+    go :: Set (Terminal s) -> (Terminal s, L.MLNode s) -> (Bool, Transitions s) -> ST s (Bool, Transitions s)
     go ts (term, step) (dirt, transitions)
-      | step `inTerminals` ts = pure (dirt, HM.insertWith (\new old -> old) term mempty transitions)
+      | step `inTerminals` ts = pure (dirt, Map.insertWith (\new old -> old) term mempty transitions)
       | otherwise             = either (storeTransitions ts dirt transitions term) refineSubtree step
       where
         -- FIXME: "if either of the above return None, else we have a sub-looping-tree and return Some.
@@ -174,7 +179,7 @@ refine a tree = do
           -- FIXME: if we find a "terminal-edgeSet" node: merge this node into the terminal node
 
           Just t -> do                               -- is already refined
-            t `L.addHistories` L.histories loop      -- merge this node into the terminal node
+            readSTRef (L.histories loop) >>= L.addHistories t       -- merge this node into the terminal node
             loop `L.setTermRef` t                    -- FIXME: seems unnessecary
             pure (dirt, transitions)                 -- continue with current isDirty value
 
