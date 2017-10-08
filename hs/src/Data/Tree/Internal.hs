@@ -1,11 +1,13 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
 module Data.Tree.Internal where
 
 import CSSR.Prelude
 import CSSR.Probabilistic (Probabilistic)
 import qualified CSSR.Probabilistic as Prob
+import qualified Data.Vector as V
 
--- class Probabilistic l => CSSRLeaf l where
+
 
 -- | === Homogeneity
 -- Psuedocode from paper:
@@ -37,6 +39,28 @@ isHomogeneous sig childrenL child2dist parent =
   cMatchesP :: Vector Integer -> Bool
   cMatchesP cdist = Prob.matchesDists_ (Prob.frequency parent) cdist sig
 
+
+navigate :: forall lf . (lf -> Event -> Maybe lf) -> lf -> Vector Event -> Maybe lf
+navigate lookup rt history
+  | V.null history = Just rt
+  | otherwise = go (V.length history) rt
+  where
+    go :: Int -> lf -> Maybe lf
+    go 0 lf = Just lf
+    go d lf =
+      let nxt = d - 1
+      in case lookup lf (history ! nxt) of
+        Just child -> go nxt child
+        _ -> Nothing
+
+
+-- | returns ancestors in order of how they should be processed
+getAncestors :: forall l . (l -> Maybe l) -> l -> [l]
+getAncestors getParent l = go (Just l) []
+  where
+    go :: Maybe l -> [l] -> [l]
+    go  Nothing ancestors = ancestors
+    go (Just w) ancestors = go (getParent w) (w:ancestors)
 
 
 
