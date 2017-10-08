@@ -36,11 +36,20 @@ data MLeaf s = MLeaf
   , hasEdgeset :: STRef s Bool
   }
 
+instance Show (MLeaf s) where
+  show = showMLeaf
+
 setTermRef :: MLeaf s -> Terminal s -> ST s ()
 setTermRef leaf t = modifySTRef (terminalReference leaf) (const $ Just t)
 
 getTermRef :: MLeaf s -> ST s (Maybe (Terminal s))
 getTermRef = readSTRef . terminalReference
+
+showMLeaf :: MLeaf s -> String
+showMLeaf m = show ( m, frequency m)
+  where
+    histObs :: [Vector Event]
+    histObs = (Hist.obs . Hist.body) <$> (HS.toList $ histories m)
 
 -- Don't do anything for now. Otherwise we loose a lot of purity.
 addHistories :: MLeaf s -> HashSet Hist.Leaf -> ST s ()

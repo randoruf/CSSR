@@ -65,9 +65,12 @@ showLeaf full (Leaf b c p) =
         Right b -> strLoop (histories b) (frequency b) c
         Left  _ -> strErr c
   where
+    showHS :: HashSet Hist.Leaf -> String
+    showHS = show . fmap (show . Hist.obs . Hist.body) . HS.toList
+
     strErr        c = "Leaf{Loop(<error>), " ++ show c ++"}"
-    strLoop hs fs c = "Leaf{Loop(" ++ show hs ++ ", " ++ show fs ++ strChildren c ++ ")}"
-    strLeaf hs fs c = "Leaf{"      ++ show hs ++ ", " ++ show fs ++ strChildren c ++  "}"
+    strLoop hs fs c = "Leaf{Loop(" ++ showHS hs ++ ", " ++ show fs ++ strChildren c ++ ")}"
+    strLeaf hs fs c = "Leaf{"      ++ showHS hs ++ ", " ++ show fs ++ strChildren c ++  "}"
     strChildren c =
       if full
       then ", " ++ show c
