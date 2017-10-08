@@ -20,7 +20,8 @@ import qualified Data.Vector.Mutable       as MV
 import qualified Data.Vector.Generic       as GV
 import qualified Data.HashTable.ST.Cuckoo  as C
 import qualified Data.HashTable.Class      as H
-import qualified Data.Set as S
+import Data.List.Set (ListSet(..))
+import qualified Data.List.Set as S
 
 
 -------------------------------------------------------------------------------
@@ -38,8 +39,13 @@ data MLeaf s = MLeaf
   , hasEdgeset :: STRef s Bool
   }
 
-instance Ord (MLeaf s) where
-
+instance Eq (MLeaf s) where
+  a == b
+    = histories a == histories b
+    && frequency a == frequency b
+    && parent a == parent b
+    && terminalReference a == terminalReference b
+    && hasEdgeset a == hasEdgeset b
 
 setTermRef :: MLeaf s -> Terminal s -> ST s ()
 setTermRef leaf t = modifySTRef (terminalReference leaf) (const $ Just t)
@@ -68,14 +74,9 @@ type MLNode s = Either (Loop s) (MLeaf s)
 --   where
 --     mvecEq = MV.overlaps `on` frequency
 
-instance Eq (MLeaf s) where
-  l0 == l1 = mvecEq l0 l1
-    where
-      mvecEq = (==) `on` frequency
-
 
 data MTree s = MTree
-  { terminals :: STRef s (Set (Terminal s))
+  { terminals :: STRef s (ListSet (Terminal s))
   , root :: MLeaf s
   }
 
@@ -87,7 +88,7 @@ freezeTree tree = L.Tree
   <$> (readSTRef (terminals tree) >>= freezeTerms)
   <*> freeze (root tree)
   where
-    freezeTerms :: Set (MLeaf s) -> ST s (HashSet L.Leaf)
+    freezeTerms :: ListSet (MLeaf s) -> ST s (HashSet L.Leaf)
     freezeTerms = fmap HS.fromList . mapM freeze . S.toList
 
 

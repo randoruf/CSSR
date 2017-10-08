@@ -18,7 +18,7 @@
 module Data.List.Set where
 
 import CSSR.Prelude hiding ((<>))
-import Data.List (nub, intersect)
+import Data.List (nub, intersect, lookup, delete, filter)
 import GHC.Exts
 import Data.Semigroup (Semigroup(..))
 
@@ -31,6 +31,10 @@ instance Foldable ListSet where
 instance Eq a => IsList (ListSet a) where
   type Item (ListSet a) = a
   fromList = ListSet . nub
+  toList = unListSet
+
+toList :: ListSet a -> [a]
+toList = unListSet
 
 instance Functor ListSet where
   fmap f = ListSet . fmap f . unListSet
@@ -48,9 +52,19 @@ instance Eq a => Monoid (ListSet a) where
   mappend = union
 
 insert :: Eq a => a -> ListSet a -> ListSet a
-insert a (ListSet as)
-  | a `elem` as = ListSet as
-  | otherwise   = ListSet (a:as)
+insert = insertWith (\old new -> new)
+
+delete :: Eq a => a -> ListSet a -> ListSet a
+delete a (ListSet as) = ListSet (a `Data.List.delete` as)
+
+filter :: Eq a => (a -> Bool) -> ListSet a -> ListSet a
+filter fn (ListSet as) = ListSet (Data.List.filter fn as)
+
+insertWith :: Eq a => (a -> a -> a) -> a -> ListSet a -> ListSet a
+insertWith fn a (ListSet as) =
+  case find (==a) as of
+    Nothing -> ListSet (a:as)
+    Just a' -> ListSet $ fn a a':(a `Data.List.delete` as)
 
 member :: Eq a => a -> ListSet a -> Bool
 member a (ListSet as) = a `elem` as
@@ -69,4 +83,13 @@ union (ListSet as) (ListSet bs) = ListSet (nub $ as <> bs)
 
 intersection :: Eq a => ListSet a -> ListSet a -> ListSet a
 intersection (ListSet as) (ListSet bs) = ListSet (as `intersect` bs)
+
+lookup :: Eq a => a -> ListSet (a, b) -> Maybe b
+lookup a (ListSet as) = Data.List.lookup a as
+
+insertAssocWith :: Eq a => (a -> b -> b) -> a -> b -> ListSet (a, b) -> ListSet (a, b)
+insertAssocWith fn k v (ListSet kvs) =
+  case find ((==k).fst) kvs of
+    Nothing -> ListSet $ (k,v):kvs
+    Just v' -> ListSet $ (k,v):(((==k).fst) `Data.List.filter` kvs)
 

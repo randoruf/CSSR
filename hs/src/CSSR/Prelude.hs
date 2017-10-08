@@ -32,6 +32,7 @@ import Data.Text           as X (Text)
 import Data.Vector         as X (Vector, (!))
 import Debug.Trace         as X
 import GHC.Generics        as X (Generic)
+import GHC.Exts            as X (IsList(fromList))
 import Lens.Micro.Platform as X
 import Lens.Micro.Internal as X
 import Prelude             as X hiding (id, head)

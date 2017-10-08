@@ -29,7 +29,7 @@ import Data.MTree.Looping as ML
 import Data.Tree.Looping as L hiding (excisable, homogeneous)
 import qualified Data.Tree.Hist as Hist
 import qualified Data.Sequence as S
-import qualified Data.Set as Set
+import qualified Data.List.Set as Set
 import qualified Data.HashSet as HS
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Vector as V
@@ -60,7 +60,7 @@ grow sig (Hist.Tree _ a hRoot) = do
   ts <- newSTRef [rt]       -- INIT queue of active, unchecked nodes
   let q = S.singleton rt    -- QUEUE root
   go q ts
-  ts' <- newSTRef =<< Set.fromList <$> readSTRef ts
+  ts' <- newSTRef =<< fromList <$> readSTRef ts
   pure $ ML.MTree ts' rt
   where
     go :: Seq (MLeaf s) -> STRef s [MLeaf s] -> ST s ()
@@ -177,7 +177,7 @@ test1 :: Double -> Hist.Tree -> ST s L.Tree
 test1 sig htree = do
   (rt, ts, q) <- queueRoot sig htree
   findTerminals_ sig rt q ts
-  ts' <- newSTRef =<< Set.fromList <$> readSTRef ts
+  ts' <- newSTRef =<< fromList <$> readSTRef ts
   x <- readSTRef ts
   t <- ML.freezeTree $ ML.MTree ts' rt
   traceM (show $ HS.size $ L._terminals t)
