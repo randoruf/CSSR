@@ -10,6 +10,7 @@ import CSSR.Probabilistic (Probabilistic)
 import qualified CSSR.Probabilistic  as Prob
 import qualified Data.Tree.Hist      as Hist
 import qualified Data.Tree.Looping   as L
+import qualified Data.Tree.Internal  as I
 
 import qualified Data.HashSet              as HS
 import qualified Data.HashMap.Strict       as HM
@@ -205,19 +206,11 @@ markEdgeSets terminals leaf = do
 --   ENDFOR
 --   RETURN TRUE
 --
-isHomogeneous :: forall s . Double -> MLeaf s -> ST s Bool
-isHomogeneous sig ll = do
-  let hs = fmap (view Hist.childrenL) ll'
-  -- hs <- (fmap.fmap) (view Hist.childrenL . fst) ll'
-  foldrM step True $ HS.fromList (hs >>= HM.elems)
+isHomogeneous :: forall s . Double -> MLeaf s -> Bool
+isHomogeneous sig ll = I.isHomogeneous sig childHists Prob.frequency ll
   where
-    ll' :: [Hist.Leaf]
-    ll' = HS.toList (histories ll)
-
-    step :: Hist.Leaf -> Bool -> ST s Bool
-    step pc = \case
-      False -> pure False
-      True  -> pure $ Prob.matchesDists_ (frequency ll) (Prob.frequency pc) sig
+    childHists :: MLeaf s -> [Hist.Leaf]
+    childHists = foldMap (HM.elems . Hist.children) . HS.toList . histories
 
 
 -- | === Excisability

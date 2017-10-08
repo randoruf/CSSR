@@ -23,16 +23,15 @@ import qualified Data.Vector as V
 --   RETURN TRUE
 --
 isHomogeneous
-  :: (Probabilistic parent, Foldable hists, Probabilistic child)
+  :: (Probabilistic parent, Probabilistic child)
   => Double
-  -> Lens' parent (hists child)
+  -> (parent -> [child])
   -> (child -> Vector Integer)
   -> parent
   -> Bool
-isHomogeneous sig childrenL child2dist parent =
+isHomogeneous sig getChildren child2dist parent = trace ("foot" <> show (length (getChildren parent))) $
   all (cMatchesP . child2dist)
-  . toList
-  . view childrenL
+  . getChildren
   $ parent
 
  where
