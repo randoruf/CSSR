@@ -53,6 +53,7 @@ library
       CSSR.Statistics.F1
       CSSR.Statistics.KologorovSmirnov
       Data.Alphabet
+      Data.List.Set
       Data.MTree.Looping
       Data.MTree.Parse
       Data.Tree.Hist
