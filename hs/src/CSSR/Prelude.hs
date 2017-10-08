@@ -17,6 +17,7 @@ module CSSR.Prelude
 import Control.Arrow       as X
 import Control.Exception   as X
 import Control.Monad       as X
+import Control.DeepSeq     as X (NFData)
 import Data.Foldable       as X hiding (minimumBy)
 import Data.Function       as X (on)
 import Data.List           as X (intercalate, nub, (\\), sortBy, delete)
@@ -77,5 +78,4 @@ type DataFileContents = Vector Event
 
 instance Hashable x => Hashable (Vector x) where
   hashWithSalt salt = hashWithSalt salt . V.toList
-
 

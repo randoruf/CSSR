@@ -1,7 +1,10 @@
-- pattern: paper/new-procedure.tex
-  command: pdflatex paper/new-procedure.tex
+- pattern: .*\.tex
+  command: pdflatex \0
 
 - pattern: .*\.hs
   command: codex update --force
+
+- pattern: .*\.hs
+  command: hlint \0
 
 

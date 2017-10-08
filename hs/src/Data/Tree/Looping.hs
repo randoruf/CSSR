@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Data.Tree.Looping where
 
@@ -18,22 +19,24 @@ import qualified Data.Tree.Hist as Hist
 
 import CSSR.Probabilistic (Probabilistic)
 import qualified CSSR.Probabilistic as Prob
+import Control.DeepSeq (NFData)
+
 
 data Leaf = Leaf
   { body      :: Either Leaf LeafBody
   , children  :: HashMap Event Leaf
   , parent    :: Maybe Leaf
-  }
+  } deriving (Generic, NFData)
 
 data LeafBody = LeafBody
   { histories :: HashSet Hist.Leaf
   , frequency :: Vector Integer
-  } deriving (Show, Eq, Generic)
+  } deriving (Show, Eq, Generic, NFData)
 
 data Tree = Tree
   { _terminals :: HashSet Leaf
   , _root :: Leaf
-  }
+  } deriving (Eq, Generic, NFData)
 
 instance Eq Leaf where
   (Leaf b0 c0 _) == (Leaf b1 c1 _) = b0 == b1 && c0 == c1

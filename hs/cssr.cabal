@@ -29,9 +29,8 @@ library
       base
     , bytestring
     , containers
+    , deepseq
     , hashable
-    , pipes
-    , pipes-bytestring
     , scientific
     , statistics
     , text
@@ -74,9 +73,8 @@ executable schema-prediction
       base
     , bytestring
     , containers
+    , deepseq
     , hashable
-    , pipes
-    , pipes-bytestring
     , scientific
     , statistics
     , text
@@ -101,9 +99,8 @@ test-suite doctest
       base
     , bytestring
     , containers
+    , deepseq
     , hashable
-    , pipes
-    , pipes-bytestring
     , scientific
     , statistics
     , text
@@ -129,9 +126,8 @@ test-suite spec
       base
     , bytestring
     , containers
+    , deepseq
     , hashable
-    , pipes
-    , pipes-bytestring
     , scientific
     , statistics
     , text
@@ -161,9 +157,8 @@ benchmark bench
       base
     , bytestring
     , containers
+    , deepseq
     , hashable
-    , pipes
-    , pipes-bytestring
     , scientific
     , statistics
     , text

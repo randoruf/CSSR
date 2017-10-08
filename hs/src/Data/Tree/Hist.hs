@@ -1,5 +1,5 @@
 {-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -29,17 +29,17 @@ data Tree = Tree
   { depth :: Int
   , alphabet :: Alphabet
   , root :: Leaf
-  } deriving (Eq, Generic)
+  } deriving (Eq, Generic, NFData)
 
 data Leaf = Leaf
   { body :: LeafBody
   , children :: HashMap Event Leaf
-  } deriving (Eq, Generic)
+  } deriving (Eq, Generic, NFData)
 
 data LeafBody = LeafBody
   { obs       :: Vector Event
   , frequency :: Vector Integer
-  } deriving (Eq, Generic)
+  } deriving (Eq, Generic, NFData)
 
 instance Show Tree where
   show (Tree d a r) = "Tree {depth " ++ show d ++ ", "++ show a ++"}\n  root:" ++ show r

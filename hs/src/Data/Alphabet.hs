@@ -11,7 +11,7 @@ import CSSR.Prelude
 data Alphabet = Alphabet
   { idxToSym :: Vector Event
   , symToIdx :: HashMap Event Int
-  } deriving (Eq, Generic, Hashable)
+  } deriving (Eq, Generic, Hashable, NFData)
 
 
 mkAlphabet :: HashSet Event -> Alphabet

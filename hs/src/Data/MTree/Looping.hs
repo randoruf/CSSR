@@ -88,8 +88,6 @@ freezeTree tree = L.Tree
     freezeTerms = fmap HS.fromList . mapM freeze . HS.toList
 
 
-
-
 freeze :: forall s . MLeaf s -> ST s L.Leaf
 freeze ml = do
   -- hs <- freezeHistories ml

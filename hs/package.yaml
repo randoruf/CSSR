@@ -24,9 +24,10 @@ dependencies:
   - base
   - bytestring
   - containers
+  - deepseq
   - hashable
-  - pipes
-  - pipes-bytestring
+# - pipes
+# - pipes-bytestring
   - scientific
   - statistics
   - text
