@@ -79,11 +79,15 @@ addTerminal :: MTree s -> Terminal s -> ST s ()
 addTerminal tree term = modifySTRef (terminals tree) (HS.insert term)
 
 
-freezeTree :: MTree s -> ST s L.Tree
-freezeTree tree
-  = L.Tree
-  <$> pure mempty
+freezeTree :: forall s . MTree s -> ST s L.Tree
+freezeTree tree = L.Tree
+  <$> (readSTRef (terminals tree) >>= freezeTerms)
   <*> freeze (root tree)
+  where
+    freezeTerms :: HashSet (MLeaf s) -> ST s (HashSet L.Leaf)
+    freezeTerms = fmap HS.fromList . mapM freeze . HS.toList
+
+
 
 
 freeze :: forall s . MLeaf s -> ST s L.Leaf
@@ -259,5 +263,6 @@ getAncestors = go [] . Just
     go ancestors = \case
       Nothing -> pure ancestors
       Just w  -> readSTRef (parent w) >>= go (w:ancestors)
+
 
 
