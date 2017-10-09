@@ -50,8 +50,17 @@ instance Eq (MLeaf s) where
 setTermRef :: MLeaf s -> Terminal s -> ST s ()
 setTermRef leaf t = modifySTRef (terminalReference leaf) (const $ Just t)
 
+
 getTermRef :: MLeaf s -> ST s (Maybe (Terminal s))
 getTermRef = readSTRef . terminalReference
+
+
+childHistories :: MLeaf s -> ST s [Hist.Leaf]
+childHistories
+  = fmap (foldMap (HM.elems . Hist.children) . HS.toList)
+  . readSTRef
+  . histories
+
 
 -- Don't do anything for now. Otherwise we loose a lot of purity.
 addHistories :: MLeaf s -> HashSet Hist.Leaf -> ST s ()
@@ -73,13 +82,8 @@ addHistories leaf hs = do
       else V.zipWith (+) a b
 
 
-
--- instance Probabilistic (MLeaf s) where
---   frequency_ = readSTRef . frequency
-
 type Loop s = MLeaf s
 type Terminal s = MLeaf s
-
 type MLNode s = Either (Loop s) (MLeaf s)
 
 data MTree s = MTree
@@ -133,20 +137,21 @@ freeze ml = do
 
 
 mkLeaf :: Maybe (MLeaf s) -> [Hist.Leaf] -> ST s (MLeaf s)
-mkLeaf p hs =
-  MLeaf
-    <$> newSTRef (HS.fromList hs) -- (fmap (, True) hs)
-    <*> newSTRef (foldr1 Prob.addFrequencies $ fmap (view (Hist.bodyL . Hist.frequencyL)) hs)
-    <*> H.new
-    <*> newSTRef p
-    <*> newSTRef Nothing
-    <*> newSTRef False
+mkLeaf p hs = do
+  a0 <- newSTRef (HS.fromList hs) -- (fmap (, True) hs)
+  a1 <- newSTRef (foldr1 Prob.addFrequencies $ fmap (view (Hist.bodyL . Hist.frequencyL)) hs)
+  a2 <- H.new
+  a3 <- newSTRef p
+  a4 <- newSTRef Nothing
+  a5 <- newSTRef False
+  pure $ MLeaf a0 a1 a2 a3 a4 a5
+
 
 mkRoot :: Alphabet -> Hist.Leaf -> ST s (MLeaf s)
 mkRoot (Alphabet vec _) hrt =
   MLeaf
     <$> newSTRef (HS.fromList [hrt])
-    <*> newSTRef (V.replicate (V.length vec) 0)
+    <*> newSTRef (view (Hist.bodyL . Hist.frequencyL) hrt)
     <*> H.new
     <*> newSTRef Nothing
     <*> newSTRef Nothing
@@ -216,19 +221,17 @@ markEdgeSets terminals leaf = do
 isHomogeneous :: forall s . Double -> MLeaf s -> ST s Bool
 isHomogeneous sig ll = do
   pdist <- readSTRef $ frequency ll
-  childs <- childHists ll
+  childs <- childHistories ll
+  hists <- l2hists ll
   pure $ all (cMatchesP pdist . Prob.frequency) childs
   where
-    childHists :: MLeaf s -> ST s [Hist.Leaf]
-    childHists
-      = fmap (foldMap (HM.elems . Hist.children) . HS.toList)
-      . readSTRef . histories
+    l2hists :: MLeaf s -> ST s [Vector Integer]
+    l2hists lf = do
+      hs <- fmap toList . readSTRef . histories $ lf
+      pure $ fmap (view (Hist.bodyL . Hist.frequencyL)) hs
 
     cMatchesP :: Vector Integer -> Vector Integer -> Bool
     cMatchesP pdist cdist = Prob.matchesDists_ pdist cdist sig
-
-
-
 
 
 -- | === Excisability

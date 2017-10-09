@@ -17,7 +17,7 @@ distribution :: Probabilistic leaf => leaf -> Vector Double
 distribution = freqToDist . frequency
 
 totalCounts :: Probabilistic leaf => leaf -> Integer
-totalCounts a = foldr (+) 0 $ frequency a
+totalCounts a = V.sum $ frequency a
 
 rounded :: Probabilistic leaf => leaf -> Vector Float
 rounded leaf = V.map (shorten 2) (distribution leaf)
@@ -27,6 +27,18 @@ rounded leaf = V.map (shorten 2) (distribution leaf)
 
 matches :: (Probabilistic a, Probabilistic b) => a -> b -> Double -> Bool
 matches a b = matchesDists (probabilisticToTuple a) (probabilisticToTuple b)
+
+matches_ :: Vector Integer -> Vector Integer -> Double -> Bool
+matches_ a b = matchesDists (sumA, V.map (divide sumA) a) (sumB, V.map (divide sumB) b)
+  where
+    sumA :: Integer
+    sumA = V.sum a
+
+    divide :: Integer -> Integer -> Double
+    divide s = (/ fromIntegral s) . fromIntegral
+
+    sumB :: Integer
+    sumB = V.sum b
 
 probabilisticToTuple :: Probabilistic a => a -> (Integer, Vector Double)
 probabilisticToTuple a = (sum $ frequency a, distribution a)

@@ -26,6 +26,7 @@ module CSSR.Algorithm.Phase2 where
 
 import CSSR.Prelude
 import Data.MTree.Looping as ML
+import Data.Maybe
 import Data.Tree.Looping as L hiding (excisable, homogeneous)
 import qualified Data.Tree.Hist as Hist
 import qualified Data.Sequence as S
@@ -162,25 +163,36 @@ findLoops sig ll =
 --    (one for each symbol in alphabet - must have empirical
 --    observation in dataset).
 nextChilds :: forall s . MLeaf s -> ST s [(Event, MLeaf s)]
-nextChilds active =
-  (fmap HS.toList . readSTRef . ML.histories $ active) >>=
-  traverse (\(e, _hs) -> (e,) <$> activeAsLeaf _hs) . groupHistory
+nextChilds active = do
+  xs <- ML.childHistories $ active
+  ys' <- pure (groupHistory xs)
+  ys <- mapM activeAsLeaf ys'
+  pure ys
   where
-    activeAsLeaf :: [Hist.Leaf] -> ST s (MLeaf s)
-    activeAsLeaf _hs = ML.mkLeaf (Just active) _hs
+    activeAsLeaf :: (Event, [Hist.Leaf]) -> ST s (Event, MLeaf s)
+    activeAsLeaf (e, _hs) = do
+      r <- ML.mkLeaf (Just active) _hs
+      pure (e, r)
 
     groupHistory :: [Hist.Leaf] -> [(Event, [Hist.Leaf])]
-    groupHistory = groupBy (V.head . view (Hist.bodyL . Hist.obsL))
+    groupHistory = groupBy (fromMaybe "" . vHead . view (Hist.bodyL . Hist.obsL))
+
+    vHead :: Vector a -> Maybe a
+    vHead v =
+      if V.null v
+      then Nothing
+      else Just (V.head v)
 
 
 test1 :: Double -> Hist.Tree -> ST s L.Tree
 test1 sig htree = do
   (rt, ts, q) <- queueRoot sig htree
   findTerminals_ sig rt q ts
+  traceM "...but it's not done!"
   ts' <- newSTRef =<< fromList <$> readSTRef ts
-  x <- readSTRef ts
   t <- ML.freezeTree $ ML.MTree ts' rt
-  traceM (show $ HS.size $ L._terminals t)
+  traceM "and now it's done!"
+  -- traceM (show $ HS.size $ L._terminals t)
   pure t
 
 maine :: IO ()
@@ -191,23 +203,35 @@ maine = do
   print x
 
 findTerminals_ :: Double -> MLeaf s -> Seq (MLeaf s) -> STRef s [MLeaf s] -> ST s ()
-findTerminals_ sig active q termsRef =
+findTerminals_ sig active q termsRef = do
+  traceM . show $ S.length q
   unless (S.null q) $ do
-    let (active, next) = splitTerminals q
+    traceM "and again!"
     terms <- readSTRef termsRef
-    traceM "another run!"
+    hs <- readSTRef $ ML.histories active
+    -- fs <- readSTRef $ ML.frequency active
+    -- p  <- readSTRef $ ML.parent active
+    -- tr <- readSTRef $ ML.terminalReference active
+    -- he <- readSTRef $ ML.hasEdgeset active
+
+    -- traceM $ "hs: " ++ (show $ fmap (view (Hist.bodyL . Hist.frequencyL)) $ HS.toList hs)
+    -- traceM $ "fs: " ++ (show fs)
+    -- traceM $ "he: " ++ (show he)
+
     isHomogeneous sig active >>= \case
       True -> do
         traceM "homogeneous!"
-        findTerminals_ sig active next termsRef
+        let (nxtActive, next) = splitTerminals q
+        findTerminals_ sig nxtActive next termsRef
       False -> do
-        traceM "not homogeneous..."
+        traceM "not homogeneous"
+        let (nxtActive, next) = splitTerminals q
         cs' <- nextChilds active
         let cs'' = fmap snd cs'
+        let ks'' = fmap fst cs'
+
         cs <- forM cs' $ \(e, x) -> findLoops sig x >>= (pure . (e,))
-        forM_ cs $ uncurry (H.insert (ML.children active))
+        forM_ cs $ uncurry (H.insert (ML.children active))   -- This leads to infinite recursion
         writeSTRef termsRef (cs'' <> delete active terms)
-        findTerminals_ sig active (next <> S.fromList cs'') termsRef
-  {-
-  -}
+        findTerminals_ sig nxtActive (next <> S.fromList cs'') termsRef
 
