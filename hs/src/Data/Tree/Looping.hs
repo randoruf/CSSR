@@ -45,9 +45,9 @@ instance Show Tree where
   show (Tree ts rt)
     = unlines . mconcat $
       [ [ "Looping.Tree"
-        , "\tterminals:"
+        , "terminals:"
         ]
-      , showLeaf False <$> HS.toList ts
+      , (("\t"<>) . showLeaf False) <$> HS.toList ts
       , [ "root:"
         , show rt
         ]

@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE LambdaCase #-}
@@ -108,8 +109,9 @@ freeze ml = do
   f <- readSTRef (frequency ml)
   cs <- freezeDown =<< (H.toList . children $ ml)
   hs <- readSTRef (histories ml)
-  let cur = L.Leaf (Right (L.LeafBody hs f)) cs Nothing
-  return $ withChilds cur (HM.map (withParent (Just cur)) cs)
+  -- let cur = L.Leaf (Right (L.LeafBody hs f)) cs Nothing
+  -- return $ withChilds cur (HM.map (withParent (Just cur)) cs)
+  return $ L.Leaf (Right (L.LeafBody hs f)) HM.empty Nothing -- cur (HM.map (withParent (Just cur)) cs)
 
   where
     withChilds :: L.Leaf -> HashMap Event L.Leaf -> L.Leaf
@@ -119,21 +121,29 @@ freeze ml = do
     withParent p (L.Leaf bod cs _) = L.Leaf bod cs p
 
     freezeDown :: [(Event, MLNode s)] -> ST s (HashMap Event L.Leaf)
-    freezeDown cs = do
-      frz <- traverse icer cs
-      return $ HM.fromList frz
+    freezeDown cs = HM.fromList . catMaybes <$> mapM icer cs
       where
-        icer :: (Event, MLNode s) -> ST s (Event, L.Leaf)
+        icer :: (Event, MLNode s) -> ST s (Maybe (Event, L.Leaf))
         icer (e, Left lp) = do
           let f = frequency lp
           -- hs <- (fmap.fmap) fst $ H.toList (histories lp)
-          c <- freeze lp
-          return (e, c)
+          -- c <- freeze lp
+          return $ Just (e, L.Leaf (Right $ L.LeafBody HS.empty (V.fromList [])) mempty Nothing)
 
-        icer (e, Right lp) = do
-          c <- freeze lp
-          -- hs <- (fmap.fmap) fst $ H.toList (histories lp)
-          return (e, c)
+        icer (e, Right lp) =
+          Just . (e,) <$> freeze lp
+
+-- data Leaf = Leaf
+--   { body      :: Either Leaf LeafBody
+--   , children  :: HashMap Event Leaf
+--   , parent    :: Maybe Leaf
+--   } deriving (Generic, NFData)
+--
+-- data LeafBody = LeafBody
+--   { histories :: HashSet Hist.Leaf
+--   , frequency :: Vector Integer
+--   } deriving (Show, Eq, Generic, NFData)
+
 
 
 mkLeaf :: Maybe (MLeaf s) -> [Hist.Leaf] -> ST s (MLeaf s)
