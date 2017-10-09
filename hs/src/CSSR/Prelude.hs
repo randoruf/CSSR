@@ -6,6 +6,7 @@ module CSSR.Prelude
   , unsafeHead
   , minimumBy
   , unsafeMinimumBy
+  , impossible
   , CSSR.Prelude.head
   , Locations
   , Idx
@@ -80,3 +81,4 @@ type DataFileContents = Vector Event
 instance Hashable x => Hashable (Vector x) where
   hashWithSalt salt = hashWithSalt salt . V.toList
 
+impossible = error

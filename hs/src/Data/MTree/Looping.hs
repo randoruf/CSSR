@@ -55,7 +55,23 @@ getTermRef = readSTRef . terminalReference
 
 -- Don't do anything for now. Otherwise we loose a lot of purity.
 addHistories :: MLeaf s -> HashSet Hist.Leaf -> ST s ()
-addHistories leaf hs = pure ()
+addHistories leaf hs = do
+  modifySTRef (frequency leaf) addFreqs
+  modifySTRef (histories leaf) (HS.union hs)
+  where
+    addFreqs :: Vector Integer -> Vector Integer
+    addFreqs leafFs = foldr ((<+>) . hfreq) leafFs (HS.toList hs)
+
+    hfreq :: Hist.Leaf -> Vector Integer
+    hfreq = view (Hist.bodyL . Hist.frequencyL)
+
+    -- Vector addition which sanity-checks the impossible case
+    (<+>) :: Vector Integer -> Vector Integer -> Vector Integer
+    a <+> b =
+      if V.length a /= V.length b
+      then impossible "distributions will all be of length size(Alphabet)"
+      else V.zipWith (+) a b
+
 
 
 -- instance Probabilistic (MLeaf s) where
@@ -65,15 +81,6 @@ type Loop s = MLeaf s
 type Terminal s = MLeaf s
 
 type MLNode s = Either (Loop s) (MLeaf s)
-
--- overlaps :: forall s . MLeaf s -> MLeaf s -> ST s Bool
--- overlaps l0 l1 = do
---   p0 <- readSTRef $ parent l0
---   p1 <- readSTRef $ parent l1
---   return $ mvecEq l0 l1 && p0 == p1
---   where
---     mvecEq = MV.overlaps `on` frequency
-
 
 data MTree s = MTree
   { terminals :: STRef s (ListSet (Terminal s))
