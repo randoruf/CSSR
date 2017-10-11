@@ -23,10 +23,14 @@ import Control.DeepSeq (NFData)
 
 
 data Leaf = Leaf
-  { body      :: Either Leaf LeafBody
+  { body      :: Either LeafRep LeafBody
   , children  :: HashMap Event Leaf
   , parent    :: Maybe Leaf
   } deriving (Generic, NFData)
+
+data LeafRep = LeafRep
+  { path :: Vector Event
+  } deriving (Show, Eq, Generic, NFData)
 
 data LeafBody = LeafBody
   { histories :: HashSet Hist.Leaf
@@ -60,32 +64,20 @@ showLeaf :: Bool -> Leaf -> String
 showLeaf full (Leaf b c p) =
   case b of
     Right (LeafBody hs fs) -> strLeaf hs fs c
-    Left (Leaf b' _ _) ->
-      case b' of
-        Right b -> strLoop (histories b) (frequency b) c
-        Left  _ -> strErr c
+    Left  (LeafRep v) -> strLoop v
   where
     showHS :: HashSet Hist.Leaf -> String
     showHS = show . fmap (show . Hist.obs . Hist.body) . HS.toList
 
-    strErr        c = "Leaf{Loop(<error>), " ++ show c ++"}"
-    strLoop hs fs c = "Leaf{Loop(" ++ showHS hs ++ ", " ++ show fs ++ strChildren c ++ ")}"
-    strLeaf hs fs c = "Leaf{"      ++ showHS hs ++ ", " ++ show fs ++ strChildren c ++  "}"
+    strLoop p       = "Leaf{Loop(" ++ show p ++ ")}"
+    strLeaf hs fs c = "Leaf{"      ++ showHS hs ++ ", " ++ show (Prob.freqToDist fs) ++ strChildren c ++  "}"
     strChildren c =
       if full
       then ", " ++ show c
       else ""
 
-instance Probabilistic Leaf where
-  frequency (Leaf b c p) =
-    case b of
-      Left (Leaf b' _ _) -> case b' of
-          Left _                 -> error "should not exist"
-          Right (LeafBody _ fs) -> fs
-      Right (LeafBody _ fs) -> fs
-
-
 instance Hashable LeafBody
+instance Hashable LeafRep
 instance Hashable Leaf where
   hashWithSalt salt (Leaf b _ _) = hashWithSalt salt b
 
@@ -149,7 +141,7 @@ instance Hashable Leaf where
 type EdgeGroup = (Vector Double, Vector Integer, HashSet Leaf)
 
 groupEdges :: Double -> Tree -> HashSet EdgeGroup
-groupEdges sig (Tree terms _) = HS.foldr part HS.empty terms
+groupEdges sig (Tree terms _) = undefined -- HS.foldr part HS.empty terms
   where
     part :: Leaf -> HashSet EdgeGroup -> HashSet EdgeGroup
     part term groups =
@@ -159,10 +151,10 @@ groupEdges sig (Tree terms _) = HS.foldr part HS.empty terms
 
       where
         termDist :: Vector Double
-        termDist = Prob.distribution term
+        termDist = undefined -- Prob.distribution term
 
         termFreq :: Vector Integer
-        termFreq = Prob.frequency term
+        termFreq = undefined -- Prob.frequency term
 
         updateGroup :: EdgeGroup -> HashSet EdgeGroup -> HashSet EdgeGroup
         updateGroup g@(d, f, ts) groups =
@@ -176,10 +168,10 @@ groupEdges sig (Tree terms _) = HS.foldr part HS.empty terms
 
         matchEdges :: EdgeGroup -> Maybe EdgeGroup -> Maybe EdgeGroup
         matchEdges _  g@(Just _) = g
-        matchEdges g@(_, f, _) Nothing =
-          if Prob.matchesDists_ (Prob.frequency term) f sig
-          then Just g
-          else Nothing
+        matchEdges g@(_, f, _) Nothing = undefined
+          -- if Prob.matchesDists_ (Prob.frequency term) f sig
+          -- then Just g
+          -- else Nothing
 
 
 -- -- | === Homogeneity

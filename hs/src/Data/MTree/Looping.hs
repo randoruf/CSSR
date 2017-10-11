@@ -109,9 +109,9 @@ freeze ml = do
   f <- readSTRef (frequency ml)
   cs <- freezeDown =<< (H.toList . children $ ml)
   hs <- readSTRef (histories ml)
-  -- let cur = L.Leaf (Right (L.LeafBody hs f)) cs Nothing
-  -- return $ withChilds cur (HM.map (withParent (Just cur)) cs)
-  return $ L.Leaf (Right (L.LeafBody hs f)) HM.empty Nothing -- cur (HM.map (withParent (Just cur)) cs)
+
+  let cur = L.Leaf (Right (L.LeafBody hs f)) cs Nothing
+  return $ withChilds cur (HM.map (withParent (Just cur)) cs)
 
   where
     withChilds :: L.Leaf -> HashMap Event L.Leaf -> L.Leaf
@@ -120,17 +120,23 @@ freeze ml = do
     withParent :: Maybe L.Leaf -> L.Leaf -> L.Leaf
     withParent p (L.Leaf bod cs _) = L.Leaf bod cs p
 
+    histObs :: Hist.Leaf -> Vector Event
+    histObs = Hist.obs . Hist.body
+
     freezeDown :: [(Event, MLNode s)] -> ST s (HashMap Event L.Leaf)
     freezeDown cs = HM.fromList . catMaybes <$> mapM icer cs
       where
         icer :: (Event, MLNode s) -> ST s (Maybe (Event, L.Leaf))
         icer (e, Left lp) = do
+          traceM "icer left"
           let f = frequency lp
-          -- hs <- (fmap.fmap) fst $ H.toList (histories lp)
-          -- c <- freeze lp
-          return $ Just (e, L.Leaf (Right $ L.LeafBody HS.empty (V.fromList [])) mempty Nothing)
+          hs <- head . sort . fmap (Hist.obs . Hist.body) . HS.toList <$> readSTRef (histories lp)
+          case hs of
+            Nothing -> impossible "all leaves have at least one history (TODO: move to NonEmpty)"
+            Just h  -> return $ Just (e, L.Leaf (Left $ L.LeafRep h) mempty Nothing)
 
-        icer (e, Right lp) =
+        icer (e, Right lp) = do
+          traceM "icer right"
           Just . (e,) <$> freeze lp
 
 -- data Leaf = Leaf
@@ -147,25 +153,23 @@ freeze ml = do
 
 
 mkLeaf :: Maybe (MLeaf s) -> [Hist.Leaf] -> ST s (MLeaf s)
-mkLeaf p hs = do
-  a0 <- newSTRef (HS.fromList hs) -- (fmap (, True) hs)
-  a1 <- newSTRef (foldr1 Prob.addFrequencies $ fmap (view (Hist.bodyL . Hist.frequencyL)) hs)
-  a2 <- H.new
-  a3 <- newSTRef p
-  a4 <- newSTRef Nothing
-  a5 <- newSTRef False
-  pure $ MLeaf a0 a1 a2 a3 a4 a5
+mkLeaf p hs = MLeaf
+  <$> newSTRef (HS.fromList hs)
+  <*> newSTRef (foldr1 Prob.addFrequencies $ fmap (view (Hist.bodyL . Hist.frequencyL)) hs)
+  <*> H.new
+  <*> newSTRef p
+  <*> newSTRef Nothing
+  <*> newSTRef False
 
 
 mkRoot :: Alphabet -> Hist.Leaf -> ST s (MLeaf s)
-mkRoot (Alphabet vec _) hrt =
-  MLeaf
-    <$> newSTRef (HS.fromList [hrt])
-    <*> newSTRef (view (Hist.bodyL . Hist.frequencyL) hrt)
-    <*> H.new
-    <*> newSTRef Nothing
-    <*> newSTRef Nothing
-    <*> newSTRef False
+mkRoot (Alphabet vec _) hrt = MLeaf
+  <$> newSTRef (HS.fromList [hrt])
+  <*> newSTRef (view (Hist.bodyL . Hist.frequencyL) hrt)
+  <*> H.new
+  <*> newSTRef Nothing
+  <*> newSTRef Nothing
+  <*> newSTRef False
 
 walk :: forall s . MLNode s -> Vector Event -> ST s (Maybe (MLNode s))
 walk cur es
