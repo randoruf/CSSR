@@ -21,7 +21,7 @@ import Control.Monad       as X
 import Control.DeepSeq     as X (NFData, deepseq)
 import Data.Foldable       as X hiding (minimumBy)
 import Data.Function       as X (on)
-import Data.List           as X (intercalate, nub, (\\), sortBy, delete)
+import Data.List           as X (intercalate, nub, (\\), sort, sortBy, delete)
 import Data.Maybe          as X (catMaybes)
 import Data.Monoid         as X
 import Data.Hashable       as X

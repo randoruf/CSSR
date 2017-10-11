@@ -56,5 +56,3 @@ initialization depth (fmap T.singleton -> s) =
   where
     parseTree :: P.Tree
     parseTree = M.buildTree depth . V.fromList $ s
-
-

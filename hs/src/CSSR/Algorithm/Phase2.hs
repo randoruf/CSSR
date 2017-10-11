@@ -28,6 +28,7 @@ import CSSR.Prelude
 import Data.MTree.Looping as ML
 import Data.Maybe
 import Data.Tree.Looping as L hiding (excisable, homogeneous)
+import qualified Data.Text as T
 import qualified Data.Tree.Hist as Hist
 import qualified Data.Sequence as S
 import qualified Data.List.Set as Set
@@ -38,6 +39,7 @@ import qualified Data.HashTable.Class as H
 import qualified CSSR.Probabilistic as Prob
 
 import CSSR.Prelude.Mutable
+import Numeric
 -- for doctest
 import CSSR.Algorithm.Phase1
 
@@ -188,11 +190,12 @@ test1 :: Double -> Hist.Tree -> ST s L.Tree
 test1 sig htree = do
   (rt, ts, q) <- queueRoot sig htree
   findTerminals_ sig rt q ts
+  cs <- readSTRef (ML.children rt)
+  forM_ cs $ \c -> readSTRef (ML.histories c) >>= \h' -> traceM . show . length $ h'
   traceM "...but it's not done!"
   ts' <- newSTRef =<< fromList <$> readSTRef ts
   t <- ML.freezeTree $ ML.MTree ts' rt
   traceM "and now it's done!"
-  -- traceM (show $ HS.size $ L._terminals t)
   pure t
 
 maine :: IO ()
@@ -204,34 +207,36 @@ maine = do
 
 findTerminals_ :: Double -> MLeaf s -> Seq (MLeaf s) -> STRef s [MLeaf s] -> ST s ()
 findTerminals_ sig active q termsRef = do
-  traceM . show $ S.length q
   unless (S.null q) $ do
-    traceM "and again!"
     terms <- readSTRef termsRef
     hs <- readSTRef $ ML.histories active
-    -- fs <- readSTRef $ ML.frequency active
-    -- p  <- readSTRef $ ML.parent active
-    -- tr <- readSTRef $ ML.terminalReference active
-    -- he <- readSTRef $ ML.hasEdgeset active
-
-    -- traceM $ "hs: " ++ (show $ fmap (view (Hist.bodyL . Hist.frequencyL)) $ HS.toList hs)
-    -- traceM $ "fs: " ++ (show fs)
-    -- traceM $ "he: " ++ (show he)
-
     isHomogeneous sig active >>= \case
       True -> do
-        traceM "homogeneous!"
+        traceM $ "node " ++ showHists hs ++ " is homogeneous: " ++ showHDists hs ++ ", childs: <>"
+        traceM $ "terminals: "
         let (nxtActive, next) = splitTerminals q
         findTerminals_ sig nxtActive next termsRef
       False -> do
-        traceM "not homogeneous"
+        traceM $ "node " ++ showHists hs ++ " is not homogeneous: " ++ showHDists hs ++ ", childs: <>"
         let (nxtActive, next) = splitTerminals q
         cs' <- nextChilds active
         let cs'' = fmap snd cs'
         let ks'' = fmap fst cs'
 
         cs <- forM cs' $ \(e, x) -> findLoops sig x >>= (pure . (e,))
-        forM_ cs $ uncurry (H.insert (ML.children active))   -- This leads to infinite recursion
+        forM_ cs $ uncurry (H.insert (ML.children active))
         writeSTRef termsRef (cs'' <> delete active terms)
         findTerminals_ sig nxtActive (next <> S.fromList cs'') termsRef
 
+
+showHists :: HashSet Hist.Leaf -> String
+showHists = show . fmap (T.concat . V.toList . Hist.obs . Hist.body) . HS.toList
+
+showHDists :: HashSet Hist.Leaf -> String
+showHDists = show . fmap (intercalate "," . V.toList . fmap f'4 . Prob.freqToDist . Hist.frequency . Hist.body) . HS.toList
+
+prettyDecimal :: RealFloat a => Int -> a -> String
+prettyDecimal p f = showFFloat (Just p) f ""
+
+f'4 :: RealFloat a => a -> String
+f'4 = prettyDecimal 4
