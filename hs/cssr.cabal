@@ -142,6 +142,7 @@ test-suite spec
     , hspec
     , QuickCheck
   other-modules:
+      CSSR.Algorithm.Phase1Spec
       CSSR.Prelude.Test
       Data.MTree.ParseSpec
       Data.Tree.HistSpec

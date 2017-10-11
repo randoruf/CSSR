@@ -190,7 +190,8 @@ test1 :: Double -> Hist.Tree -> ST s L.Tree
 test1 sig htree = do
   (rt, ts, q) <- queueRoot sig htree
   findTerminals_ sig rt q ts
-  cs <- readSTRef (ML.children rt)
+  cs <- H.toList =<< readSTRef (ML.children rt)
+
   forM_ cs $ \c -> readSTRef (ML.histories c) >>= \h' -> traceM . show . length $ h'
   traceM "...but it's not done!"
   ts' <- newSTRef =<< fromList <$> readSTRef ts
