@@ -145,6 +145,7 @@ test-suite spec
       CSSR.Prelude.Test
       Data.MTree.ParseSpec
       Data.Tree.HistSpec
+      Data.Tree.InternalSpec
   default-language: Haskell2010
 
 benchmark bench
