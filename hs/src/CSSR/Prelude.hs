@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ConstraintKinds #-}
 module CSSR.Prelude
@@ -10,6 +11,8 @@ module CSSR.Prelude
   , impossible
   , prettyDecimal
   , f'4
+  , (>$>)
+  , vHead
   , CSSR.Prelude.head
   , GVector
   , UVector
@@ -101,3 +104,14 @@ prettyDecimal p f = showFFloat (Just p) f ""
 
 f'4 :: RealFloat a => a -> String
 f'4 = prettyDecimal 4
+
+(>$>) :: Monad m => (b -> m c) -> (a, b) -> m (a, c)
+(>$>) f (a, b) = (a,) <$> f b
+
+vHead :: Vector a -> Maybe a
+vHead v =
+  if V.null v
+  then Nothing
+  else Just (V.head v)
+
+

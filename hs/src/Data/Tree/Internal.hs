@@ -121,12 +121,8 @@ excisableM getParent getFrequency sig l = do
     go f (a:as) = do
       af <- getFrequency a
       case Prob.matchesFreqsAsDists sig f af of
-        Significant    -> do
-          traceM $ show ("significant", f, af, Prob.freqToDist f, Prob.freqToDist af)
-          pure (Just a)
-        NotSignificant -> do
-          traceM $ show ("notnificant", f, af, Prob.freqToDist f, Prob.freqToDist af)
-          go f as
+        Significant    -> pure (Just a)
+        NotSignificant -> go f as
 
 
 
