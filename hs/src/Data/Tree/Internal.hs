@@ -85,11 +85,11 @@ getAncestors getParent l =
   runIdentity $ getAncestorsM (pure . getParent) l
 
 getAncestorsM :: forall l m . Monad m => (l -> m (Maybe l)) -> l -> m [l]
-getAncestorsM getParent l = go (Just l) []
+getAncestorsM getParent l = getParent l >>= go []
   where
-    go :: Maybe l -> [l] -> m [l]
-    go  Nothing ancestors = pure ancestors
-    go (Just w) ancestors = getParent w >>= \p -> go p (w:ancestors)
+    go :: [l] -> Maybe l -> m [l]
+    go ancestors  Nothing = pure ancestors
+    go ancestors (Just w) = getParent w >>= go (w:ancestors)
 
 
 
@@ -120,9 +120,13 @@ excisableM getParent getFrequency sig l = do
     go _     [] = pure Nothing
     go f (a:as) = do
       af <- getFrequency a
-      case Prob.matchesFreqs sig f af of
-        Significant    -> pure (Just a)
-        NotSignificant -> go f as
+      case Prob.matchesFreqsAsDists sig f af of
+        Significant    -> do
+          traceM $ show ("significant", f, af, Prob.freqToDist f, Prob.freqToDist af)
+          pure (Just a)
+        NotSignificant -> do
+          traceM $ show ("notnificant", f, af, Prob.freqToDist f, Prob.freqToDist af)
+          go f as
 
 
 

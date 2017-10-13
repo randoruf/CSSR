@@ -124,8 +124,8 @@ findTerminals sig active q termsRef = do
   t <- readSTRef termsRef
   unless (S.null q) $ do                                  -- WHILE queue is not empty
     terms <- readSTRef termsRef
-    isHomogeneous sig active >>= \case                              --   COMPUTE homogeneity(dequeued looping node, parse tree)
-      True -> findTerminals sig active next termsRef     --   IF node is homogeneous
+    isHomogeneous sig active >>= \case                    --   COMPUTE homogeneity(dequeued looping node, parse tree)
+      True -> findTerminals sig active next termsRef      --   IF node is homogeneous
                                                           --   THEN continue
       False -> do                                         --   ELSE
         cs' <- nextChilds active                          --     CONSTRUCT new looping nodes for all valid children (one for each symbol in
@@ -140,10 +140,10 @@ findTerminals sig active q termsRef = do
         findTerminals sig active (next <> S.fromList cs'') termsRef  -- ENDWHILE
 
 
-queueRoot :: forall s . Double -> Hist.Tree -> ST s (MLeaf s, STRef s [MLeaf s], Seq (MLeaf s))
+queueRoot :: forall s . Double -> Hist.Tree -> ST s (MLeaf s, STRef s (Set.ListSet (MLeaf s)), Seq (MLeaf s))
 queueRoot sig (Hist.Tree _ a hRoot) = do
   rt <- ML.mkRoot a hRoot   -- INIT root looping node
-  ts <- newSTRef [rt]       -- INIT queue of active, unchecked nodes
+  ts <- newSTRef $ fromList [rt]       -- INIT queue of active, unchecked nodes
   let q = S.singleton rt    -- QUEUE root
   return (rt, ts, q)
 
@@ -155,7 +155,7 @@ splitTerminals = ((`S.index` 0) *** identity) . S.splitAt 1
 -- COMPUTE excisability(node, looping tree)
 findLoops :: Double -> MLeaf s -> ST s (MLNode s)
 findLoops sig ll =
-  excisable sig ll >>= \case
+  ML.excisable sig ll >>= \case
     Nothing -> return $ Right ll
     Just ex -> return $ Left ex
 
@@ -165,15 +165,15 @@ findLoops sig ll =
 --    observation in dataset).
 nextChilds :: forall s . MLeaf s -> ST s [(Event, MLeaf s)]
 nextChilds active = do
+  hs <- readSTRef $ ML.histories active
   xs <- ML.childHistories $ active
-  ys' <- pure (groupHistory xs)
-  ys <- mapM activeAsLeaf ys'
-  pure ys
+  -- traceM $ showHists xs <> " parents: " <> showHists (HS.toList hs)
+  let ys' = groupHistory xs
+  -- traceM $ show $ map (\(e, ls) -> (e, showHists ls)) $ ys'
+  mapM activeAsLeaf ys'
   where
     activeAsLeaf :: (Event, [Hist.Leaf]) -> ST s (Event, MLeaf s)
-    activeAsLeaf (e, _hs) = do
-      r <- ML.mkLeaf (Just active) _hs
-      pure (e, r)
+    activeAsLeaf (e, _hs) = (e,) <$> ML.mkLeaf (Just active) _hs
 
     groupHistory :: [Hist.Leaf] -> [(Event, [Hist.Leaf])]
     groupHistory = groupBy (fromMaybe "" . vHead . view (Hist.bodyL . Hist.obsL))
@@ -188,7 +188,7 @@ nextChilds active = do
 test1 :: Double -> Hist.Tree -> ST s L.Tree
 test1 sig htree = do
   (rt, ts, q) <- queueRoot sig htree
-  findTerminals_ sig rt q ts
+  findTerminals_ sig q ts
   cs::[(Event,MLNode s)] <- H.toList (ML.children rt)
   let go :: (Event, MLNode s) -> ST s Int
       go (e, n) = do
@@ -201,10 +201,8 @@ test1 sig htree = do
   hls :: [Int] <- mapM go cs
   traceM $ "hls : " <> show hls
 
-  traceM "...but it's not done!"
-  ts' <- newSTRef =<< fromList <$> readSTRef ts
-  t <- ML.freezeTree $ ML.MTree ts' rt
-  traceM "and now it's done!"
+  -- ts' <- newSTRef =<< readSTRef ts
+  t <- ML.freezeTree $ ML.MTree ts rt
   pure t
 
 maine :: IO ()
@@ -214,33 +212,65 @@ maine = do
   let x = runST $ test1 0.01 hs
   print x
 
-findTerminals_ :: Double -> MLeaf s -> Seq (MLeaf s) -> STRef s [MLeaf s] -> ST s ()
-findTerminals_ sig active q termsRef = do
+findTerminals_ :: Double -> Seq (MLeaf s) -> STRef s (Set.ListSet (MLeaf s)) -> ST s ()
+findTerminals_ sig q termsRef = do
   unless (S.null q) $ do
+    let (active, next) = splitTerminals q
     terms <- readSTRef termsRef
     hs <- readSTRef $ ML.histories active
     isHomogeneous sig active >>= \case
       True -> do
         -- traceM $ "node " ++ showHists hs ++ " is homogeneous: " ++ showHDists hs ++ ", childs: <>"
-        -- traceM $ "terminals: "
-        let (nxtActive, next) = splitTerminals q
-        findTerminals_ sig nxtActive next termsRef
+        findTerminals_ sig next termsRef
       False -> do
-        -- traceM $ "node " ++ showHists hs ++ " is not homogeneous: " ++ showHDists hs ++ ", childs: <>"
-        let (nxtActive, next) = splitTerminals q
-        cs' <- nextChilds active
-        let cs'' = fmap snd cs'
-        let ks'' = fmap fst cs'
+        --traceM $ "node " ++ showHists hs ++ " is not homogeneous: " ++ showHDists hs ++ ", childs: <>"
+        let (active, next) = splitTerminals q
 
-        cs::[(Event, MLNode s)] <- mapM (\(e, x) -> (e,) <$> findLoops sig x) cs'
-
+        cs' :: [(Event,  MLeaf s)] <- nextChilds active
+        cs  :: [(Event, MLNode s)] <- mapM (\(e, x) -> (e,) <$> findLoops sig x) cs'
         forM_ cs $ uncurry (H.insert (ML.children active))
-        writeSTRef termsRef (cs'' <> delete active terms)
-        findTerminals_ sig nxtActive (next <> S.fromList cs'') termsRef
+
+        let cs'' = rights . map snd $ cs
+        modifySTRef termsRef (\ls -> (Set.delete active ls) `Set.union` (fromList cs''))
+        -- findTerminals_ sig (next <> S.fromList cs'') termsRef  -- ENDWHILE
+
+-- def grow(tree:ParseTree):LoopingTree = {
+--   val ltree = new LoopingTree(tree)
+--   val activeQueue = ListBuffer[LLeaf](ltree.root)
+--   val findAlternative = LoopingTree.findAlt(ltree)(_)
+--
+--   while (activeQueue.nonEmpty) {
+--     val active:LLeaf = activeQueue.remove(0)
+--
+--     val isHomogeneous:Boolean = active.histories.forall{ LoopingTree.nextHomogeneous(tree) }
+--
+--     if (isHomogeneous) {
+--       debug("we've hit our base case")
+--     } else {
+--
+--       val nextChildren:Map[Event, LoopingTree.Node] = active.histories
+--         .flatMap { _.children }
+--         .groupBy{ _.observation }
+--         .map { case (c, pleaves) => {
+--           val lleaf:LLeaf = new LLeaf(c +: active.observed, pleaves, Option(active))
+--           val alternative:Option[LoopingTree.AltNode] = findAlternative(lleaf)
+--           c -> alternative.toRight(lleaf)
+--         } }
+--
+--       active.children ++= nextChildren
+--       // Now that active has children, it cannot be considered a terminal node. Thus, we elide the active node:
+--       ltree.terminals = ltree.terminals ++ LoopingTree.leafChildren(nextChildren).toSet[LLeaf] - active
+--       // FIXME: how do edge-sets handle the removal of an active node? Also, are they considered terminal?
+--       activeQueue ++= LoopingTree.leafChildren(nextChildren)
+--     }
+--   }
+--
+--   ltree
+-- }
 
 
-showHists :: HashSet Hist.Leaf -> String
-showHists = show . fmap (T.concat . V.toList . Hist.obs . Hist.body) . HS.toList
+showHists :: [Hist.Leaf] -> String
+showHists = show . fmap (T.concat . V.toList . Hist.obs . Hist.body)
 
 showHDists :: HashSet Hist.Leaf -> String
 showHDists = show . fmap (intercalate "," . V.toList . fmap f'4 . Prob.freqToDist . Hist.frequency . Hist.body) . HS.toList

@@ -7,6 +7,7 @@ module CSSR.Probabilistic
   , freqToDist
   , matchesFreqs
   , addFrequencies
+  , matchesFreqsAsDists
 
   -- UNUSED helpers
   -- , distribution
@@ -55,6 +56,9 @@ rounded leaf = V.map (shorten 2) (distribution leaf)
 
 matchesFreqs :: (GVector v Integer, GVector v Double) => Double -> v Integer -> v Integer -> TestResult
 matchesFreqs s a b = kstestWrapper s (GV.map fromIntegral a) (GV.map fromIntegral b)
+
+matchesFreqsAsDists :: (GVector v Integer, GVector v Double) => Double -> v Integer -> v Integer -> TestResult
+matchesFreqsAsDists s a b = kstestWrapper s (freqToDist $ GV.map fromIntegral a) (freqToDist $ GV.map fromIntegral b)
 
 matchesDists :: (GVector v Integer, GVector v Double) => Double -> v Double -> v Double -> TestResult
 matchesDists s a b = kstestWrapper s a b

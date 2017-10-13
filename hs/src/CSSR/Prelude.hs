@@ -24,6 +24,7 @@ import Control.Arrow       as X
 import Control.Exception   as X
 import Control.Monad       as X
 import Control.DeepSeq     as X (NFData, deepseq)
+import Data.Either         as X
 import Data.Foldable       as X hiding (minimumBy)
 import Data.Function       as X (on)
 import Data.List           as X (intercalate, nub, (\\), sort, sortBy, delete)
