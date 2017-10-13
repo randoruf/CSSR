@@ -39,7 +39,6 @@ import qualified Data.HashTable.Class as H
 import qualified CSSR.Probabilistic as Prob
 
 import CSSR.Prelude.Mutable
-import Numeric
 -- for doctest
 import CSSR.Algorithm.Phase1
 
@@ -190,9 +189,18 @@ test1 :: Double -> Hist.Tree -> ST s L.Tree
 test1 sig htree = do
   (rt, ts, q) <- queueRoot sig htree
   findTerminals_ sig rt q ts
-  cs <- H.toList =<< readSTRef (ML.children rt)
+  cs::[(Event,MLNode s)] <- H.toList (ML.children rt)
+  let go :: (Event, MLNode s) -> ST s Int
+      go (e, n) = do
+        case n of
+          Left loop -> pure (-1)
+          Right c -> do
+            hs' <- readSTRef (ML.histories c)
+            pure . HS.size $ hs'
 
-  forM_ cs $ \c -> readSTRef (ML.histories c) >>= \h' -> traceM . show . length $ h'
+  hls :: [Int] <- mapM go cs
+  traceM $ "hls : " <> show hls
+
   traceM "...but it's not done!"
   ts' <- newSTRef =<< fromList <$> readSTRef ts
   t <- ML.freezeTree $ ML.MTree ts' rt
@@ -213,18 +221,19 @@ findTerminals_ sig active q termsRef = do
     hs <- readSTRef $ ML.histories active
     isHomogeneous sig active >>= \case
       True -> do
-        traceM $ "node " ++ showHists hs ++ " is homogeneous: " ++ showHDists hs ++ ", childs: <>"
-        traceM $ "terminals: "
+        -- traceM $ "node " ++ showHists hs ++ " is homogeneous: " ++ showHDists hs ++ ", childs: <>"
+        -- traceM $ "terminals: "
         let (nxtActive, next) = splitTerminals q
         findTerminals_ sig nxtActive next termsRef
       False -> do
-        traceM $ "node " ++ showHists hs ++ " is not homogeneous: " ++ showHDists hs ++ ", childs: <>"
+        -- traceM $ "node " ++ showHists hs ++ " is not homogeneous: " ++ showHDists hs ++ ", childs: <>"
         let (nxtActive, next) = splitTerminals q
         cs' <- nextChilds active
         let cs'' = fmap snd cs'
         let ks'' = fmap fst cs'
 
-        cs <- forM cs' $ \(e, x) -> findLoops sig x >>= (pure . (e,))
+        cs::[(Event, MLNode s)] <- mapM (\(e, x) -> (e,) <$> findLoops sig x) cs'
+
         forM_ cs $ uncurry (H.insert (ML.children active))
         writeSTRef termsRef (cs'' <> delete active terms)
         findTerminals_ sig nxtActive (next <> S.fromList cs'') termsRef
@@ -236,8 +245,3 @@ showHists = show . fmap (T.concat . V.toList . Hist.obs . Hist.body) . HS.toList
 showHDists :: HashSet Hist.Leaf -> String
 showHDists = show . fmap (intercalate "," . V.toList . fmap f'4 . Prob.freqToDist . Hist.frequency . Hist.body) . HS.toList
 
-prettyDecimal :: RealFloat a => Int -> a -> String
-prettyDecimal p f = showFFloat (Just p) f ""
-
-f'4 :: RealFloat a => a -> String
-f'4 = prettyDecimal 4

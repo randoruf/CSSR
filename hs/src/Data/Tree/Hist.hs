@@ -10,6 +10,7 @@ import Data.List
 import qualified Data.HashMap.Strict as HM
 import Data.Vector ((!))
 import qualified Data.Vector as V
+import qualified Data.Vector.Generic as GV
 import Lens.Micro.Internal
 import GHC.Generics (Generic)
 import Data.Hashable
@@ -90,7 +91,7 @@ frequencyL :: Lens' LeafBody (Vector Integer)
 frequencyL = lens frequency $ \a b -> a { frequency = b }
 
 instance Probabilistic Leaf where
-  frequency = view (bodyL . frequencyL)
+  frequency = GV.convert . view (bodyL . frequencyL)
 
 
 -------------------------------------------------------------------------------

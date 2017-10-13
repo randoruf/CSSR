@@ -1,23 +1,51 @@
-module CSSR.Probabilistic where
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts #-}
+module CSSR.Probabilistic
+  -- classes
+  ( Probabilistic(..)
+  -- helpers
+  , freqToDist
+  , matchesFreqs
+  , addFrequencies
+
+  -- UNUSED helpers
+  -- , distribution
+  -- , fsum
+  -- , rounded
+  -- , matchesDists
+
+  -- UNUSED average adt
+  -- , Average(..)
+  -- , getAverageI
+  -- , getAverageF
+
+
+  -- re-exports
+  , TestResult(..)
+  ) where
 
 import CSSR.Prelude
-import CSSR.Statistics.KologorovSmirnov
+
+import Control.Monad.Primitive
+import Statistics.Test.KolmogorovSmirnov (TestResult(..))
 
 import qualified Data.Vector as V
-import qualified Data.Vector.Generic as MV
-import Control.Monad.Primitive
+import qualified Data.Vector.Generic as GV
+import qualified Data.Vector.Unboxed as UV
+import qualified Statistics.Test.KolmogorovSmirnov as KS
+
 
 class Probabilistic leaf where
-  frequency :: leaf -> Vector Integer
+  frequency :: GVector v Integer => leaf -> v Integer
 
-  frequency_ :: Monad m => leaf -> m (Vector Integer)
+  frequency_ :: GVector v Integer => Monad m => leaf -> m (v Integer)
   frequency_ = pure . frequency
 
-distribution :: Probabilistic leaf => leaf -> Vector Double
+distribution :: (GVector v Integer, GVector v Double, Probabilistic leaf) => leaf -> v Double
 distribution = freqToDist . frequency
 
-totalCounts :: Probabilistic leaf => leaf -> Integer
-totalCounts a = V.sum $ frequency a
+fsum :: Probabilistic leaf => leaf -> Integer
+fsum = V.sum . frequency
 
 rounded :: Probabilistic leaf => leaf -> Vector Float
 rounded leaf = V.map (shorten 2) (distribution leaf)
@@ -25,65 +53,50 @@ rounded leaf = V.map (shorten 2) (distribution leaf)
     shorten :: Int -> Double -> Float
     shorten n f = (fromInteger $ round $ f * (10^n)) / (10.0^^n)
 
-matches :: (Probabilistic a, Probabilistic b) => a -> b -> Double -> Bool
-matches a b = matchesDists (probabilisticToTuple a) (probabilisticToTuple b)
+matchesFreqs :: (GVector v Integer, GVector v Double) => Double -> v Integer -> v Integer -> TestResult
+matchesFreqs s a b = kstestWrapper s (GV.map fromIntegral a) (GV.map fromIntegral b)
 
-matches_ :: Vector Integer -> Vector Integer -> Double -> Bool
-matches_ a b = matchesDists (sumA, V.map (divide sumA) a) (sumB, V.map (divide sumB) b)
-  where
-    sumA :: Integer
-    sumA = V.sum a
+matchesDists :: (GVector v Integer, GVector v Double) => Double -> v Double -> v Double -> TestResult
+matchesDists s a b = kstestWrapper s a b
 
-    divide :: Integer -> Integer -> Double
-    divide s = (/ fromIntegral s) . fromIntegral
+kstestWrapper :: (GVector v Integer, GVector v Double) => Double -> v Double -> v Double -> TestResult
+kstestWrapper s a b = KS.kolmogorovSmirnovTest2 s (GV.convert $ a) (GV.convert $ b)
 
-    sumB :: Integer
-    sumB = V.sum b
+addFrequencies :: (GVector v Integer) => v Integer -> v Integer -> v Integer
+addFrequencies = GV.zipWith (+)
 
-probabilisticToTuple :: Probabilistic a => a -> (Integer, Vector Double)
-probabilisticToTuple a = (sum $ frequency a, distribution a)
-
-matchesDists :: (Integer, Vector Double) -> (Integer, Vector Double) -> Double -> Bool
-matchesDists = kstwoTest
-
-matchesDists_ :: Vector Integer -> Vector Integer -> Double -> Bool
-matchesDists_ = kstwoTest_
-
-addFrequencies :: Vector Integer -> Vector Integer -> Vector Integer
-addFrequencies = V.zipWith (+)
-
-freqToDist :: Vector Integer -> Vector Double
-freqToDist fs = V.map (\f -> fromIntegral f / total) fs
+freqToDist :: (GVector v Integer, GVector v Double) => v Integer -> v Double
+freqToDist fs = GV.map (\f -> fromIntegral f / total) fs
   where
     total :: Double
-    total = (fromIntegral . sum) fs
+    total = (fromIntegral . GV.sum) fs
 
-unsafeMatch :: PrimMonad m
-            => V.MVector (PrimState m) Integer -> Vector Integer -> Double -> m Bool
-unsafeMatch mvec vec sig = do
-  vec' <- MV.basicUnsafeFreeze mvec
-  return $ kstwoTest_ vec' vec sig
+-- unsafeMatch :: (PrimMonad m, (GV.Mutable v m) Integer, GVector v0 Integer) => v Integer -> v0 Integer -> Double -> m Bool
+-- unsafeMatch mvec vec sig = do
+--   vec' <- GV.basicUnsafeFreeze mvec
+--   return $ kstwoTest_ vec' vec sig
+--
+--
+-- unsafeMatch_ :: PrimMonad m
+--             => GVector v Integer
+--             => v Integer
+--             -> v Integer -> Double -> m Bool
+-- unsafeMatch_ mvec0 mvec1 sig = do
+--   vec0 <- GV.basicUnsafeFreeze mvec0
+--   vec1 <- GV.basicUnsafeFreeze mvec1
+--   return $ kstwoTest_ vec0 vec1 sig
+--
 
-
-unsafeMatch_ :: PrimMonad m
-            => V.MVector (PrimState m) Integer
-            -> V.MVector (PrimState m) Integer -> Double -> m Bool
-unsafeMatch_ mvec0 mvec1 sig = do
-  vec0 <- MV.basicUnsafeFreeze mvec0
-  vec1 <- MV.basicUnsafeFreeze mvec1
-  return $ kstwoTest_ vec0 vec1 sig
-
-
-test :: Probabilistic inst => inst -> inst -> Double -> Bool
-test state testCase sig = nullHypothesis state testCase >= sig
-
-
-nullHypothesis :: (Probabilistic empirical, Probabilistic test)
-               => empirical -> test -> Double
-nullHypothesis ss val = kstwo (countsAndDist ss) (countsAndDist val)
-  where
-    countsAndDist :: Probabilistic p => p -> (Integer, Vector Double)
-    countsAndDist = totalCounts &&& distribution
+-- test :: Probabilistic inst => inst -> inst -> Double -> Bool
+-- test state testCase sig = nullHypothesis state testCase >= sig
+--
+--
+-- nullHypothesis :: (Probabilistic empirical, Probabilistic test)
+--                => empirical -> test -> Double
+-- nullHypothesis ss val = kstwo (countsAndDist ss) (countsAndDist val)
+--   where
+--     countsAndDist :: Probabilistic p => p -> (Integer, Vector Double)
+--     countsAndDist = totalCounts &&& distribution
 
 
 

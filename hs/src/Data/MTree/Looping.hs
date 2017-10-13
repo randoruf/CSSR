@@ -6,7 +6,7 @@ module Data.MTree.Looping where
 
 import CSSR.Prelude.Mutable
 import Data.Alphabet
-import CSSR.Probabilistic (Probabilistic)
+import CSSR.Probabilistic (Probabilistic, TestResult(..))
 
 import qualified CSSR.Probabilistic  as Prob
 import qualified Data.Tree.Hist      as Hist
@@ -245,7 +245,7 @@ isHomogeneous sig ll = do
       pure $ fmap (view (Hist.bodyL . Hist.frequencyL)) hs
 
     cMatchesP :: Vector Integer -> Vector Integer -> Bool
-    cMatchesP pdist cdist = Prob.matchesDists_ pdist cdist sig
+    cMatchesP pdist cdist = Prob.matchesFreqs sig pdist cdist == Significant
 
 
 -- | === Excisability
@@ -271,16 +271,20 @@ isHomogeneous sig ll = do
 -- >>> ptree
 --
 excisable :: forall s . Double -> MLeaf s -> ST s (Maybe (MLeaf s))
-excisable sig ll = getAncestors ll >>= go
+excisable sig ll = do
+  as <- getAncestors ll
+  llf <- readSTRef (frequency ll)
+  foldrM as (pure  llf as
   where
-    go :: [MLeaf s] -> ST s (Maybe (MLeaf s))
-    go     [] = pure Nothing
-    go (a:as) = do
+    go :: Vector Integer -> [MLeaf s] -> ST s (Maybe (MLeaf s))
+    go _     [] = pure Nothing
+    go f (a:as) = do
       af <- readSTRef (frequency a)
-      llf <- readSTRef (frequency ll)
-      if Prob.matchesDists_ llf af sig
-      then pure $ Just a
-      else go as
+      case Prob.matchesFreqs sig f af of
+        Significant -> do
+          traceM $ show (fmap f'4 $ Prob.freqToDist f) <> "<="<> show sig <>"=>" <> show (fmap f'4 $ Prob.freqToDist af)
+          pure $ Just a
+        NotSignificant -> go f as
 
 -- |
 -- Returns ancestors in order of how they should be processed

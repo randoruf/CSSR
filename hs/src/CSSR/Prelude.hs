@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ConstraintKinds #-}
 module CSSR.Prelude
   ( module X
   , groupBy
@@ -7,7 +8,11 @@ module CSSR.Prelude
   , minimumBy
   , unsafeMinimumBy
   , impossible
+  , prettyDecimal
+  , f'4
   , CSSR.Prelude.head
+  , GVector
+  , UVector
   , Locations
   , Idx
   , Event
@@ -31,17 +36,22 @@ import Data.Set            as X (Set)
 import Data.Sequence       as X (Seq)
 import Data.Text           as X (Text)
 import Data.Vector         as X (Vector, (!))
+import Data.Vector.Mutable as X (MVector)
 import Debug.Trace         as X
-import GHC.Generics        as X (Generic)
 import GHC.Exts            as X (IsList(fromList))
+import GHC.Generics        as X (Generic)
+import GHC.Natural         as X (Natural)
 import Lens.Micro.Platform as X
 import Lens.Micro.Internal as X
 import Prelude             as X hiding (id, head)
 
+import qualified Data.Vector.Generic as GV (Vector)
+import qualified Data.Vector.Unboxed as UV (Vector)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Foldable       as F
 import qualified Data.Vector         as V
 import qualified Prelude             as P
+import Numeric
 
 identity :: a -> a
 identity = P.id
@@ -77,8 +87,16 @@ type Idx = Integer
 type Event = Text
 type Delim = Text
 type DataFileContents = Vector Event
+type GVector = GV.Vector
+type UVector = UV.Vector
 
 instance Hashable x => Hashable (Vector x) where
   hashWithSalt salt = hashWithSalt salt . V.toList
 
 impossible = error
+
+prettyDecimal :: RealFloat a => Int -> a -> String
+prettyDecimal p f = showFFloat (Just p) f ""
+
+f'4 :: RealFloat a => a -> String
+f'4 = prettyDecimal 4

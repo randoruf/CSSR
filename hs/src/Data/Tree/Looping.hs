@@ -17,7 +17,7 @@ import CSSR.Prelude
 import Data.Alphabet
 import qualified Data.Tree.Hist as Hist
 
-import CSSR.Probabilistic (Probabilistic)
+import CSSR.Probabilistic (Probabilistic, TestResult(..))
 import qualified CSSR.Probabilistic as Prob
 import Control.DeepSeq (NFData)
 
@@ -230,7 +230,7 @@ excisable sig ll@(Leaf (Right (LeafBody hs fs)) _ _) = go $ getAncestors ll
     go (a:as) = case body a of
       Left _ -> Nothing
       Right (LeafBody hs' fs') ->
-        if Prob.matchesDists_ fs fs' sig
+        if Prob.matchesFreqs sig fs fs' == Significant
         then Just a
         else go as
 

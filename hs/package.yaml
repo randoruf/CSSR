@@ -26,10 +26,8 @@ dependencies:
   - containers
   - deepseq
   - hashable
-# - pipes
-# - pipes-bytestring
   - scientific
-  - statistics
+  - statistics < 0.14  # API for KS-tests changes in 0.14+
   - text
   - unordered-containers
   - vector
