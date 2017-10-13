@@ -2,8 +2,9 @@
 {-# LANGUAGE RankNTypes #-}
 module Data.Tree.Internal where
 
+import Data.Functor.Identity (Identity(..))
 import CSSR.Prelude
-import CSSR.Probabilistic (Probabilistic)
+import CSSR.Probabilistic (Probabilistic, TestResult(..))
 import qualified CSSR.Probabilistic as Prob
 import qualified Data.Vector as V
 
@@ -28,37 +29,56 @@ isHomogeneous
   -> Double
   -> (parent, Vector Integer)
   -> Bool
-isHomogeneous getChildren child2dist sig (parent, pdist) =
-  all (cMatchesP . child2dist)
-  . getChildren
-  $ parent
+isHomogeneous getChildren child2dist sig parent =
+  runIdentity $ isHomogeneousM (pure . getChildren) (pure . child2dist) sig parent
 
- where
-  cMatchesP :: Vector Integer -> Bool
-  cMatchesP cdist = Prob.matchesDists_ pdist cdist sig
+
+isHomogeneousM
+  :: Monad m
+  => (parent -> m [child])
+  -> (child -> m (Vector Integer))
+  -> Double
+  -> (parent, Vector Integer)
+  -> m Bool
+isHomogeneousM getChildrenM child2distM sig (parent, pdist) =
+  getChildrenM parent
+  >>= mapM child2distM
+  >>= pure . all ((== Significant) . (Prob.matchesFreqs sig pdist))
+
 
 
 navigate :: forall lf . (lf -> Event -> Maybe lf) -> lf -> Vector Event -> Maybe lf
-navigate lookup rt history
-  | V.null history = Just rt
-  | otherwise = go (V.length history) rt
+navigate lookup rt history = runIdentity $ navigateM (\a b -> pure $ lookup a b) rt history
+
+
+navigateM :: forall lf m . Monad m => (lf -> Event -> m (Maybe lf)) -> lf -> Vector Event -> m (Maybe lf)
+navigateM lookup rt history
+  | V.null history = pure (Just rt)
+  | otherwise      = go (fromIntegral (V.length history)) rt
   where
-    go :: Int -> lf -> Maybe lf
-    go 0 lf = Just lf
+    go :: Natural -> lf -> m (Maybe lf)
+    go 0 lf = pure (Just lf)
     go d lf =
-      let nxt = d - 1
-      in case lookup lf (history ! nxt) of
-        Just child -> go nxt child
-        _ -> Nothing
+      lookup lf (history ! nxt)
+      >>= \case
+        Just ch -> go (d - 1) ch
+        Nothing -> pure Nothing
+      where
+        nxt :: Int
+        nxt = fromIntegral (d - 1)
 
 
 -- | returns ancestors in order of how they should be processed
-getAncestors :: forall l . (l -> Maybe l) -> l -> [l]
-getAncestors getParent l = go (Just l) []
+getAncestors :: (l -> Maybe l) -> l -> [l]
+getAncestors getParent l = runIdentity $ getAncestorsM (pure . getParent) l
+
+getAncestorsM :: forall l m . Monad m => (l -> m (Maybe l)) -> l -> m [l]
+getAncestorsM getParent l = go (Just l) []
   where
-    go :: Maybe l -> [l] -> [l]
-    go  Nothing ancestors = ancestors
-    go (Just w) ancestors = go (getParent w) (w:ancestors)
+    go :: Maybe l -> [l] -> m [l]
+    go  Nothing ancestors = pure ancestors
+    go (Just w) ancestors = getParent w >>= \p -> go p (w:ancestors)
+
 
 
 
