@@ -16,6 +16,8 @@ import Data.Foldable
 import CSSR.Prelude
 import Data.Alphabet
 import qualified Data.Tree.Hist as Hist
+import qualified Data.Tree.Internal as I
+
 
 import CSSR.Probabilistic (Probabilistic, TestResult(..))
 import qualified CSSR.Probabilistic as Prob
@@ -41,6 +43,13 @@ data Tree = Tree
   { _terminals :: HashSet Leaf
   , _root :: Leaf
   } deriving (Eq, Generic, NFData)
+
+bodyL :: Lens' Leaf (Either LeafRep LeafBody)
+bodyL = lens body $ \l b -> l { body = b }
+
+frequencyL :: Lens' LeafBody (Vector Integer)
+frequencyL = lens frequency $ \b f -> b { frequency = f }
+
 
 instance Eq Leaf where
   (Leaf b0 c0 _) == (Leaf b1 c1 _) = b0 == b1 && c0 == c1
@@ -173,74 +182,6 @@ groupEdges sig (Tree terms _) = undefined -- HS.foldr part HS.empty terms
           -- then Just g
           -- else Nothing
 
-
--- -- | === Homogeneity
--- -- Psuedocode from paper:
--- --   INPUTS: looping node, parse tree
--- --   COLLECT all next-step histories from looping node in parse tree
--- --   FOR each history in next-step histories
--- --     FOR each child in history's children
--- --       IF child's distribution ~/=  node's distribution
--- --       THEN RETURN false
--- --       ENDIF
--- --     ENDFOR
--- --   ENDFOR
--- --   RETURN TRUE
---
--- isHomogeneous :: Double -> Leaf -> Bool
--- isHomogeneous sig ll = foldr step True allPChilds
---   where
---     allPChilds :: HashSet Leaf
---     allPChilds = HS.fromList $
---       HS.toList (histories . body $ ll) >>= HM.elems . view Hist.children
---
---     step :: Leaf -> Bool -> Bool
---     step _  False = False
---     step pc _     = Prob.matches ll pc sig
---
--- -- | === Excisability
--- -- Psuedocode from paper:
--- --   INPUTS: looping node, looping tree
--- --   COLLECT all ancestors of the looping node from the looping tree, ordered by
--- --           increasing depth (depth 0, or "root node," first)
--- --   FOR each ancestor
--- --     IF ancestor's distribution == looping node's distribution
--- --     THEN
--- --       the node is excisable: create loop in the tree
--- --       ENDFOR (ie "break")
--- --     ELSE do nothing
--- --     ENDIF
--- --   ENDFOR
--- --
--- excisable :: Double -> Leaf -> Maybe Leaf
--- excisable sig ll = go (getAncestors ll)
---   where
---     go :: [Leaf] -> Maybe Leaf
---     go [] = Nothing
---     go (a:as)
---       | Prob.matches ll a sig = Just a
---       | otherwise = go as
-
 excisable :: Double -> Leaf -> Maybe Leaf
-excisable sig (Leaf (Left _) _ _) = Nothing
-excisable sig ll@(Leaf (Right (LeafBody hs fs)) _ _) = go $ getAncestors ll
-  where
-    go :: [Leaf] -> Maybe Leaf
-    go [] = Nothing
-    go (a:as) = case body a of
-      Left _ -> Nothing
-      Right (LeafBody hs' fs') ->
-        if Prob.matchesFreqs sig fs fs' == Significant
-        then Just a
-        else go as
-
--- | returns ancestors in order of how they should be processed
-getAncestors :: Leaf -> [Leaf]
-getAncestors ll = go (Just ll) []
-  where
-    go :: Maybe Leaf -> [Leaf] -> [Leaf]
-    go  Nothing ancestors = ancestors
-    go (Just w) ancestors = go (parent w) (w:ancestors)
-
-
+excisable s l = join $ I.excisableM (Just . parent) (preview (bodyL . _Right . frequencyL)) s l
 

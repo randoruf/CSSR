@@ -139,18 +139,6 @@ freeze ml = do
           traceM "icer right"
           Just . (e,) <$> freeze lp
 
--- data Leaf = Leaf
---   { body      :: Either Leaf LeafBody
---   , children  :: HashMap Event Leaf
---   , parent    :: Maybe Leaf
---   } deriving (Generic, NFData)
---
--- data LeafBody = LeafBody
---   { histories :: HashSet Hist.Leaf
---   , frequency :: Vector Integer
---   } deriving (Show, Eq, Generic, NFData)
-
-
 
 mkLeaf :: Maybe (MLeaf s) -> [Hist.Leaf] -> ST s (MLeaf s)
 mkLeaf p hs = MLeaf
@@ -171,6 +159,7 @@ mkRoot (Alphabet vec _) hrt = MLeaf
   <*> newSTRef Nothing
   <*> newSTRef False
 
+
 walk :: forall s . MLNode s -> Vector Event -> ST s (Maybe (MLNode s))
 walk cur es
   | null es   = pure (Just cur)
@@ -184,6 +173,14 @@ walk cur es
     reify (Left  l) = l
     reify (Right l) = l
 
+
+-- Note that walk and navigate go in reverse walking order >.<
+navigateM :: forall s . MLNode s -> Vector Event -> ST s (Maybe (MLNode s))
+navigateM = I.navigateM (H.lookup . children . reify)
+  where
+    reify :: MLNode s -> MLeaf s
+    reify (Left  l) = l
+    reify (Right l) = l
 
 -------------------------------------------------------------------------------
 -- Predicates for the construction of a looping tree
@@ -218,83 +215,21 @@ markEdgeSets terminals leaf = do
     distributionST :: MLeaf s -> ST s (Vector Double)
     distributionST lf = Prob.freqToDist <$> readSTRef (frequency lf)
 
+-- ========================================================================= --
 
--- | === Homogeneity
--- Psuedocode from paper:
---   INPUTS: looping node, parse tree
---   COLLECT all next-step histories from looping node in parse tree
---   FOR each history in next-step histories
---     FOR each child in history's children
---       IF child's distribution ~/=  node's distribution
---       THEN RETURN false
---       ENDIF
---     ENDFOR
---   ENDFOR
---   RETURN TRUE
---
 isHomogeneous :: forall s . Double -> MLeaf s -> ST s Bool
 isHomogeneous sig ll = do
-  pdist <- readSTRef $ frequency ll
-  childs <- childHistories ll
-  hists <- l2hists ll
-  pure $ all (cMatchesP pdist . Prob.frequency) childs
+  pdist <- readSTRef (frequency ll)
+  I.isHomogeneousM childDists sig (ll, pdist)
   where
-    l2hists :: MLeaf s -> ST s [Vector Integer]
-    l2hists lf = do
-      hs <- fmap toList . readSTRef . histories $ lf
-      pure $ fmap (view (Hist.bodyL . Hist.frequencyL)) hs
+    childDists :: MLeaf s -> ST s [Vector Integer]
+    childDists = (fmap.fmap) Prob.frequency . childHistories
 
-    cMatchesP :: Vector Integer -> Vector Integer -> Bool
-    cMatchesP pdist cdist = Prob.matchesFreqs sig pdist cdist == Significant
-
-
--- | === Excisability
--- Psuedocode from paper:
---   INPUTS: looping node, looping tree
---   COLLECT all ancestors of the looping node from the looping tree, ordered by
---           increasing depth (depth 0, or "root node," first)
---   FOR each ancestor
---     IF ancestor's distribution == looping node's distribution
---     THEN
---       the node is excisable: create loop in the tree
---       ENDFOR (ie "break")
---     ELSE do nothing
---     ENDIF
---   ENDFOR
---
--- Examples:
--- >>> import CSSR.Algorithm.Phase1
--- >>> let ptree = initialization 2 short_ep
--- >>> :{
---
--- :}
--- >>> ptree
---
 excisable :: forall s . Double -> MLeaf s -> ST s (Maybe (MLeaf s))
-excisable sig ll = do
-  as <- getAncestors ll
-  llf <- readSTRef (frequency ll)
-  foldrM as (pure  llf as
-  where
-    go :: Vector Integer -> [MLeaf s] -> ST s (Maybe (MLeaf s))
-    go _     [] = pure Nothing
-    go f (a:as) = do
-      af <- readSTRef (frequency a)
-      case Prob.matchesFreqs sig f af of
-        Significant -> do
-          traceM $ show (fmap f'4 $ Prob.freqToDist f) <> "<="<> show sig <>"=>" <> show (fmap f'4 $ Prob.freqToDist af)
-          pure $ Just a
-        NotSignificant -> go f as
+excisable sig ll = I.excisableM (readSTRef . parent) (readSTRef . frequency) sig ll
 
--- |
--- Returns ancestors in order of how they should be processed
 getAncestors :: MLeaf s -> ST s [MLeaf s]
-getAncestors = go [] . Just
-  where
-    go :: [MLeaf s] -> Maybe (MLeaf s) -> ST s [MLeaf s]
-    go ancestors = \case
-      Nothing -> pure ancestors
-      Just w  -> readSTRef (parent w) >>= go (w:ancestors)
+getAncestors = I.getAncestorsM (readSTRef . parent)
 
 
 

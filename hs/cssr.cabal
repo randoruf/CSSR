@@ -32,7 +32,7 @@ library
     , deepseq
     , hashable
     , scientific
-    , statistics
+    , statistics < 0.14
     , text
     , unordered-containers
     , vector
@@ -51,7 +51,6 @@ library
       CSSR.Probabilistic
       CSSR.Statistics.EntropyRate
       CSSR.Statistics.F1
-      CSSR.Statistics.KologorovSmirnov
       Data.Alphabet
       Data.List.Set
       Data.MTree.Looping
@@ -77,7 +76,7 @@ executable schema-prediction
     , deepseq
     , hashable
     , scientific
-    , statistics
+    , statistics < 0.14
     , text
     , unordered-containers
     , vector
@@ -103,7 +102,7 @@ test-suite doctest
     , deepseq
     , hashable
     , scientific
-    , statistics
+    , statistics < 0.14
     , text
     , unordered-containers
     , vector
@@ -130,7 +129,7 @@ test-suite spec
     , deepseq
     , hashable
     , scientific
-    , statistics
+    , statistics < 0.14
     , text
     , unordered-containers
     , vector
@@ -162,7 +161,7 @@ benchmark bench
     , deepseq
     , hashable
     , scientific
-    , statistics
+    , statistics < 0.14
     , text
     , unordered-containers
     , vector

@@ -24,31 +24,42 @@ import qualified Data.Vector as V
 --   RETURN TRUE
 --
 isHomogeneous
-  :: (parent -> [child])
-  -> (child -> Vector Integer)
+  :: (parent -> [Vector Integer])
   -> Double
   -> (parent, Vector Integer)
   -> Bool
-isHomogeneous getChildren child2dist sig parent =
-  runIdentity $ isHomogeneousM (pure . getChildren) (pure . child2dist) sig parent
+isHomogeneous getChildDists sig parent =
+  runIdentity $ isHomogeneousM (pure . getChildDists) sig parent
 
+-- isHomogeneous :: forall s . Double -> MLeaf s -> ST s Bool
+-- isHomogeneous sig ll = do
+--   pdist <- readSTRef $ frequency ll
+--   childs <- childHistories ll
+--   hists <- l2hists ll
+--   pure $ all (cMatchesP pdist . Prob.frequency) childs
+--   where
+--     l2hists :: MLeaf s -> ST s [Vector Integer]
+--     l2hists lf = do
+--       hs <- fmap toList . readSTRef . histories $ lf
+--       pure $ fmap (view (Hist.bodyL . Hist.frequencyL)) hs
+--
+--     cMatchesP :: Vector Integer -> Vector Integer -> Bool
+--     cMatchesP pdist cdist = Prob.matchesFreqs sig pdist cdist == Significant
 
 isHomogeneousM
   :: Monad m
-  => (parent -> m [child])
-  -> (child -> m (Vector Integer))
+  => (parent -> m [Vector Integer])
   -> Double
   -> (parent, Vector Integer)
   -> m Bool
-isHomogeneousM getChildrenM child2distM sig (parent, pdist) =
-  getChildrenM parent
-  >>= mapM child2distM
-  >>= pure . all ((== Significant) . (Prob.matchesFreqs sig pdist))
-
+isHomogeneousM getChildDists sig (parent, pdist) =
+  all ((== Significant) . (Prob.matchesFreqs sig pdist))
+  <$> getChildDists parent
 
 
 navigate :: forall lf . (lf -> Event -> Maybe lf) -> lf -> Vector Event -> Maybe lf
-navigate lookup rt history = runIdentity $ navigateM (\a b -> pure $ lookup a b) rt history
+navigate lookup rt history =
+  runIdentity $ navigateM (\a b -> pure $ lookup a b) rt history
 
 
 navigateM :: forall lf m . Monad m => (lf -> Event -> m (Maybe lf)) -> lf -> Vector Event -> m (Maybe lf)
@@ -70,7 +81,8 @@ navigateM lookup rt history
 
 -- | returns ancestors in order of how they should be processed
 getAncestors :: (l -> Maybe l) -> l -> [l]
-getAncestors getParent l = runIdentity $ getAncestorsM (pure . getParent) l
+getAncestors getParent l =
+  runIdentity $ getAncestorsM (pure . getParent) l
 
 getAncestorsM :: forall l m . Monad m => (l -> m (Maybe l)) -> l -> m [l]
 getAncestorsM getParent l = go (Just l) []
@@ -79,6 +91,38 @@ getAncestorsM getParent l = go (Just l) []
     go  Nothing ancestors = pure ancestors
     go (Just w) ancestors = getParent w >>= \p -> go p (w:ancestors)
 
+
+
+-- | === Excisability
+-- Psuedocode from paper:
+--   INPUTS: looping node, looping tree
+--   COLLECT all ancestors of the looping node from the looping tree, ordered by
+--           increasing depth (depth 0, or "root node," first)
+--   FOR each ancestor
+--     IF ancestor's distribution == looping node's distribution
+--     THEN
+--       the node is excisable: create loop in the tree
+--       ENDFOR (ie "break")
+--     ELSE do nothing
+--     ENDIF
+--   ENDFOR
+excisable :: (l -> Maybe l) -> (l -> Vector Integer) -> Double -> l -> Maybe l
+excisable getParent getFrequency sig l =
+  runIdentity $ excisableM (pure . getParent) (pure . getFrequency) sig l
+
+excisableM :: forall l m . Monad m => (l -> m (Maybe l)) -> (l -> m (Vector Integer)) -> Double -> l -> m (Maybe l)
+excisableM getParent getFrequency sig l = do
+  as <- getAncestorsM getParent l
+  lf <- getFrequency l
+  go lf as
+  where
+    go :: Vector Integer -> [l] -> m (Maybe l)
+    go _     [] = pure Nothing
+    go f (a:as) = do
+      af <- getFrequency a
+      case Prob.matchesFreqs sig f af of
+        Significant    -> pure (Just a)
+        NotSignificant -> go f as
 
 
 

@@ -14,6 +14,8 @@ import qualified Data.Vector.Generic as GV
 import Lens.Micro.Internal
 import GHC.Generics (Generic)
 import Data.Hashable
+import qualified Data.Tree.Internal as I
+
 
 import CSSR.Probabilistic (Probabilistic)
 import qualified CSSR.Probabilistic as Prob (Probabilistic(..))
@@ -163,18 +165,5 @@ instance Ixed Leaf where
           goAgain child' = Leaf bod (HM.insert c child' childs)
 
 navigate :: Tree -> Vector Event -> Maybe Leaf
-navigate (view rootL -> rt) history
-  | V.null history = Just rt
-  | otherwise = go (V.length history) rt
-  where
-    go :: Int -> Leaf -> Maybe Leaf
-    go 0 lf = Just lf
-    go d (Leaf bod childs) =
-      let nxt = d - 1
-      in case HM.lookup (history ! nxt) childs of
-        Just child -> go nxt child
-        _ -> Nothing
-
-
-
+navigate (view rootL -> rt) history = I.navigate (\ls e -> HM.lookup e (view childrenL ls)) rt history
 
