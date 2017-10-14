@@ -1,6 +1,7 @@
 module CSSR.Algorithm.Phase1Spec where
 
 import CSSR.Prelude.Test
+import CSSR.Fixtures (short_ep)
 import CSSR.Algorithm.Phase1 (initialization)
 import Data.Alphabet
 import Data.Tree.Hist
@@ -15,7 +16,6 @@ main = hspec spec
 spec :: Spec
 spec =
   describe "a short even process" $ do
-    let short_ep = "00011110001100011110000111101101111111111000110001101101100111100111100"
     let tree = initialization 2 short_ep
 
     it "finds the correct alphabet" $
