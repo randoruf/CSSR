@@ -4,6 +4,7 @@ import CSSR.Prelude.Test
 import CSSR.Algorithm.Phase1 (initialization)
 import Data.Alphabet
 import Data.Tree.Hist
+import qualified Data.Text as T
 import qualified Data.HashSet as HS
 import qualified Data.Vector as V
 import qualified Data.HashMap.Strict as HM
@@ -16,13 +17,38 @@ spec =
   describe "a short even process" $ do
     let short_ep = "00011110001100011110000111101101111111111000110001101101100111100111100"
     let tree = initialization 2 short_ep
+
     it "finds the correct alphabet" $
       mkAlphabet (HS.fromList ["0", "1"]) == alphabet tree
-    let d0 = root tree :: Leaf
-    let d1 = HM.elems (children d0) :: [Leaf]
-    let d2 = foldr ((<>) . HM.elems . children) [] d1 :: [Leaf]
-    it "finds the correct children of depth 2" $
-      HS.fromList (fmap V.fromList [["0", "0"],["1", "0"],["0", "1"], ["1", "1"]]) == HS.fromList (fmap (obs . body) d2)
+
+    let d0 = [root tree]
+    describe "depth 0" $ depthSpec d0 [([28,42],"")]
+
+    let d1 = getChildren d0
+    describe "depth 1" $ depthSpec d1 [([15,12],"0"), ([12,30],"1")]
+
+    let d2 = getChildren d1
+    describe "depth 2" $ depthSpec d2 [([1,1],"00"), ([0,1], "10"), ([1,1],"01"), ([1,1],"11")]
+
+
+  where
+    str2Event :: Event -> [Event]
+    str2Event = fmap T.singleton . T.unpack
+
+    bodyShouldContain :: [Leaf] -> [([Integer],Event)] -> Expectation
+    bodyShouldContain d cs = fmap ((frequency . body) &&& (obs . body)) d
+             `shouldContain` fmap ( V.fromList        *** (V.fromList . str2Event)) cs
+
+    getChildren :: [Leaf] -> [Leaf]
+    getChildren = foldr ((<>) . HM.elems . children) []
+
+    depthSpec :: [Leaf] -> [([Integer],Event)] -> SpecWith (Arg Expectation)
+    depthSpec d exp = do
+      it "should contain expected number of leaves" $ length d `shouldBe` length exp
+      it "should contain expected leaves"           $ d `bodyShouldContain` exp
+
+
+
 
 -- >>> initialization 1 short_ep
 -- Tree {depth 1, Alphabet: ["0","1"]}
