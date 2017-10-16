@@ -16,6 +16,7 @@ module CSSR.Prelude
   , CSSR.Prelude.head
   , GVector
   , UVector
+  , LText
   , Locations
   , Idx
   , Event
@@ -51,6 +52,7 @@ import Prelude             as X hiding (id, head)
 
 import qualified Data.Vector.Generic as GV (Vector)
 import qualified Data.Vector.Unboxed as UV (Vector)
+import qualified Data.Text.Lazy      as LT (Text)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Foldable       as F
 import qualified Data.Vector         as V
@@ -93,6 +95,7 @@ type Delim = Text
 type DataFileContents = Vector Event
 type GVector = GV.Vector
 type UVector = UV.Vector
+type LText = LT.Text
 
 instance Hashable x => Hashable (Vector x) where
   hashWithSalt salt = hashWithSalt salt . V.toList

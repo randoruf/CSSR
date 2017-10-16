@@ -92,6 +92,13 @@ obsL = lens obs $ \bod a -> bod { obs = a }
 frequencyL :: Lens' LeafBody (Vector Integer)
 frequencyL = lens frequency $ \a b -> a { frequency = b }
 
+lobsL :: Lens' Leaf (Vector Event)
+lobsL = bodyL . obsL
+
+lfrequencyL :: Lens' Leaf (Vector Integer)
+lfrequencyL = bodyL . frequencyL
+
+
 instance Probabilistic Leaf where
   frequency = GV.convert . view (bodyL . frequencyL)
 

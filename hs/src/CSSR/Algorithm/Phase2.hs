@@ -49,7 +49,7 @@ import CSSR.Algorithm.Phase1
 -- >>> import CSSR.Algorithm.Phase1
 -- >>> let short_ep = "00011110001100011110000111101101111111111000110001101101100111100111100"
 -- >>> let htree = initialization 1 short_ep
--- >>> runST $ grow 0.01 htree >>= ML.freeze
+-- >>> runST $ grow 0.01 htree >>= ML.freezeTree
 -- Leaf{fromList [
 --      " "->Leaf{obs: [], freq: [28,42]}
 --           children:

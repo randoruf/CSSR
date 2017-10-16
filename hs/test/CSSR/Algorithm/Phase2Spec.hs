@@ -11,9 +11,11 @@ import CSSR.Fixtures (short_ep)
 import CSSR.Algorithm.Phase1 (initialization)
 import CSSR.Algorithm.Phase2 (grow)
 import Data.Alphabet
-import Data.Tree.Hist
 
+import qualified Data.Tree.Hist as Hist
 import qualified Data.MTree.Looping as ML
+import qualified Data.Tree.Looping as L
+import qualified Data.Text as T
 
 
 main :: IO ()
@@ -21,36 +23,23 @@ main = hspec spec
 
 spec :: Spec
 spec =
-  describe "a short even process" $ do
-    let ltree = runST $ grow 0.01 (initialization 2 short_ep) >>= ML.freezeTree
-    it "should be tested" $
-      pending
-
+  describe "a short even process root" $ do
+    let ltree = runST $ grow 0.01 (initialization 1 short_ep) >>= ML.freezeTree
+    it "should have the expected frequency" $
+      L.frequency <$> (rootBody ltree) `shouldBe` Just (V.fromList [28,42])
+    it "should have the expected histories" $
+      (histories . L.histories) <$> (rootBody ltree) `shouldBe` Just (asExps [([28,42], "")])
   where
-    getChildren :: [Leaf] -> [Leaf]
-    getChildren = foldr ((<>) . HM.elems . children) []
+    rootBody :: L.Tree -> Maybe L.LeafBody
+    rootBody = preview (L.rootL . L.bodyL . _Right)
 
--- Leaf{fromList [
---      " "->Leaf{obs: [], freq: [28,42]}
---           children:
---           "0"->Leaf{obs: ["0"], freq: [1,1], no children}
--- <BLANKLINE>
---           "1"->Leaf{obs: ["1"], freq: [1,1], no children}], [0,0], fromList []}
---
+    histories :: HashSet Hist.Leaf -> HashSet (Vector Integer, Vector Event)
+    histories = HS.map ((view Hist.lfrequencyL) &&& (view Hist.lobsL))
 
--- |
--- Example:
---
--- >>> import CSSR.Algorithm.Phase1
--- >>> let short_ep = "00011110001100011110000111101101111111111000110001101101100111100111100"
--- >>> let htree = initialization 1 short_ep
--- >>> runST $ grow 0.01 htree >>= ML.freeze
--- Leaf{fromList [
---      " "->Leaf{obs: [], freq: [28,42]}
---           children:
---           "0"->Leaf{obs: ["0"], freq: [1,1], no children}
--- <BLANKLINE>
---           "1"->Leaf{obs: ["1"], freq: [1,1], no children}], [0,0], fromList []}
-
+    asExps :: [([Integer], Text)] -> HashSet (Vector Integer, Vector Event)
+    asExps es = HS.fromList $ fmap asExp es
+      where
+        asExp :: ([Integer], Text) -> (Vector Integer, Vector Event)
+        asExp (is, es) = (V.fromList is, V.fromList . map T.singleton . T.unpack $ es)
 
 
