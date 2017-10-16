@@ -27,6 +27,7 @@ dependencies:
   - deepseq
   - hashable
   - scientific
+
   - statistics < 0.14  # API for KS-tests changes in 0.14+
   - text
   - unordered-containers
@@ -35,6 +36,10 @@ dependencies:
   - microlens
   - hashtables
   - primitive
+
+  # for graphviz
+  - fgl
+  - graphviz
 
 library:
   source-dirs: src

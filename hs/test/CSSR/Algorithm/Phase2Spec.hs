@@ -29,6 +29,7 @@ spec =
       L.frequency <$> (rootBody ltree) `shouldBe` Just (V.fromList [28,42])
     it "should have the expected histories" $
       (histories . L.histories) <$> (rootBody ltree) `shouldBe` Just (asExps [([28,42], "")])
+
   where
     rootBody :: L.Tree -> Maybe L.LeafBody
     rootBody = preview (L.rootL . L.bodyL . _Right)

@@ -40,6 +40,8 @@ library
     , microlens
     , hashtables
     , primitive
+    , fgl
+    , graphviz
   exposed-modules:
       CSSR
       CSSR.Algorithm.Phase1
@@ -55,6 +57,7 @@ library
       Data.List.Set
       Data.MTree.Looping
       Data.MTree.Parse
+      Data.Tree.Graphviz
       Data.Tree.Hist
       Data.Tree.Internal
       Data.Tree.Looping
@@ -84,6 +87,8 @@ executable schema-prediction
     , microlens
     , hashtables
     , primitive
+    , fgl
+    , graphviz
     , cssr
     , optparse-applicative
   other-modules:
@@ -110,6 +115,8 @@ test-suite doctest
     , microlens
     , hashtables
     , primitive
+    , fgl
+    , graphviz
     , cssr
     , doctest
     , QuickCheck
@@ -137,11 +144,15 @@ test-suite spec
     , microlens
     , hashtables
     , primitive
+    , fgl
+    , graphviz
     , cssr
     , hspec
     , QuickCheck
   other-modules:
       CSSR.Algorithm.Phase1Spec
+      CSSR.Algorithm.Phase2Spec
+      CSSR.Fixtures
       CSSR.Prelude.Test
       Data.MTree.ParseSpec
       Data.Tree.HistSpec
@@ -170,6 +181,8 @@ benchmark bench
     , microlens
     , hashtables
     , primitive
+    , fgl
+    , graphviz
     , cssr
     , criterion
     , deepseq

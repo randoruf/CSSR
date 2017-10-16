@@ -31,25 +31,39 @@ data Leaf = Leaf
   , parent    :: Maybe Leaf
   } deriving (Generic, NFData)
 
+bodyL :: Lens' Leaf (Either LeafRep LeafBody)
+bodyL = lens body $ \l b -> l { body = b }
+
+
 data LeafRep = LeafRep
   { path :: Vector Event
   } deriving (Show, Eq, Generic, NFData)
+
+pathL :: Lens' LeafRep (Vector Event)
+pathL = lens path $ \b f -> b { path = f }
 
 data LeafBody = LeafBody
   { histories :: HashSet Hist.Leaf
   , frequency :: Vector Integer
   } deriving (Show, Eq, Generic, NFData)
 
-data Tree = Tree
-  { _terminals :: HashSet Leaf
-  , _root :: Leaf
-  } deriving (Eq, Generic, NFData)
-
-bodyL :: Lens' Leaf (Either LeafRep LeafBody)
-bodyL = lens body $ \l b -> l { body = b }
+historiesL :: Lens' LeafBody (HashSet Hist.Leaf)
+historiesL = lens histories $ \b f -> b { histories = f }
 
 frequencyL :: Lens' LeafBody (Vector Integer)
 frequencyL = lens frequency $ \b f -> b { frequency = f }
+
+data Tree = Tree
+  { terminals :: HashSet Leaf
+  , root :: Leaf
+  } deriving (Eq, Generic, NFData)
+
+terminalsL :: Lens' Tree (HashSet Leaf)
+terminalsL = lens terminals $ \b f -> b { terminals = f }
+
+rootL :: Lens' Tree Leaf
+rootL = lens root $ \b f -> b { root = f }
+
 
 
 instance Eq Leaf where
