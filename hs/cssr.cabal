@@ -51,6 +51,7 @@ library
       CSSR.Prelude
       CSSR.Prelude.Mutable
       CSSR.Probabilistic
+      CSSR.Results
       CSSR.Statistics.EntropyRate
       CSSR.Statistics.F1
       Data.Alphabet

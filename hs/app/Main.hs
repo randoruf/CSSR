@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Main where
 
+import Prelude
 import Options.Applicative (execParser)
 
 import Cli
