@@ -38,8 +38,8 @@ dependencies:
   - primitive
 
   # for graphviz
-  - fgl
   - graphviz
+  - directory  >= 1.2.3.0 # needed for System.Directory.canonicalizePath
 
 library:
   source-dirs: src

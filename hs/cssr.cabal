@@ -40,8 +40,8 @@ library
     , microlens
     , hashtables
     , primitive
-    , fgl
     , graphviz
+    , directory  >= 1.2.3.0
   exposed-modules:
       CSSR
       CSSR.Algorithm.Phase1
@@ -88,8 +88,8 @@ executable cssr
     , microlens
     , hashtables
     , primitive
-    , fgl
     , graphviz
+    , directory  >= 1.2.3.0
     , cssr
     , optparse-applicative
   other-modules:
@@ -116,8 +116,8 @@ test-suite doctest
     , microlens
     , hashtables
     , primitive
-    , fgl
     , graphviz
+    , directory  >= 1.2.3.0
     , cssr
     , doctest
     , QuickCheck
@@ -145,8 +145,8 @@ test-suite spec
     , microlens
     , hashtables
     , primitive
-    , fgl
     , graphviz
+    , directory  >= 1.2.3.0
     , cssr
     , hspec
     , QuickCheck
@@ -182,8 +182,8 @@ benchmark bench
     , microlens
     , hashtables
     , primitive
-    , fgl
     , graphviz
+    , directory  >= 1.2.3.0
     , cssr
     , criterion
     , deepseq
