@@ -48,6 +48,7 @@ library
       CSSR.Algorithm.Phase2
       CSSR.Algorithm.Phase3
       CSSR.Algorithm.Utils
+      CSSR.Inferred
       CSSR.Prelude
       CSSR.Prelude.Mutable
       CSSR.Probabilistic
