@@ -22,7 +22,6 @@ import qualified Data.Tree.Internal as I
 
 import CSSR.Probabilistic (Probabilistic, TestResult(..))
 import qualified CSSR.Probabilistic as Prob
-import Control.DeepSeq (NFData)
 
 
 data Leaf = Leaf

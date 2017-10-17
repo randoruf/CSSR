@@ -6,7 +6,7 @@ category:    Hidden Markov Models
 author:      Sam Stites
 maintainer:  sam@stites.io
 github:      stites/CSSR
-license:     BSD
+license:     BSD3
 copyright:   2016-2017
 
 ghc-options: -fno-warn-name-shadowing
@@ -45,7 +45,7 @@ library:
   source-dirs: src
 
 executables:
-  schema-prediction:
+  cssr:
     main: Main.hs
     source-dirs: app
     dependencies:
