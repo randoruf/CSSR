@@ -1,12 +1,30 @@
 module CSSR.Statistics.EntropyRate where
 
 import CSSR.Prelude
+import qualified Data.HashMap.Strict as HM
 
-type Probability = Double
-type Frequency = Integer
-type ProbabilityDistribution = [Probability]
-type FrequencyDistribution = [Frequency]
+type TransitionMap = HashMap State (HashMap Event (Maybe State))
+type State = ()
+type Symbol = Text
 
+distribution :: State -> HashMap Symbol Double
+distribution = undefined
+
+entropyRate :: TransitionMap -> Double
+entropyRate ts =
+  (-1) * sum (fmap go $ HM.keys ts)
+  where
+    go :: State -> Double
+    go s = foldl' go' 0 (HM.toList $ distribution s)
+
+    go' :: Double -> (Symbol, Double) -> Double
+    go' sEntRate (s, p)
+      -- technically, we can remove branching, but I don't know what scala will do, given log(0)
+      | p > 0  = sEntRate + freq * p * log2 p
+      -- Also note that scala logs are the natural log
+      | p <= 0 = sEntRate
+      where freq = undefined
+            log2 = undefined
 {-
 entropyRate :: [(ProbabilityDistribution, FrequencyDistribution)] -> Double
 entropyRate = ((-1) *) . sum . map stateER
