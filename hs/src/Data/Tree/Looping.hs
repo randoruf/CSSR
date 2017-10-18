@@ -12,6 +12,7 @@ import Data.Vector.Mutable (MVector)
 import qualified Data.Vector.Mutable as MV
 import qualified Data.HashTable.ST.Cuckoo as C
 import qualified Data.HashTable.Class as H
+import qualified Data.Text as T
 import Data.Foldable
 
 import CSSR.Prelude
@@ -44,7 +45,7 @@ pathL = lens path $ \b f -> b { path = f }
 data LeafBody = LeafBody
   { histories :: HashSet Hist.Leaf
   , frequency :: Vector Integer
-  } deriving (Show, Eq, Generic, NFData)
+  } deriving (Eq, Generic, NFData)
 
 historiesL :: Lens' LeafBody (HashSet Hist.Leaf)
 historiesL = lens histories $ \b f -> b { histories = f }
@@ -81,7 +82,32 @@ instance Show Tree where
       ]
 
 instance Show Leaf where
-  show = showLeaf True
+  show = go 1 " "
+    where
+      indent :: Int -> String
+      indent d = replicate (5 * d) ' '
+
+      showLeaf :: Int -> Event -> Either LeafRep LeafBody -> String
+      showLeaf d e b = "\n" ++ indent d ++ show e ++"->LLeaf{" ++ show b
+
+      go :: Int -> Event -> Leaf -> String
+      go d e (Leaf b cs _)
+        | length cs == 0 = showLeaf d e b ++ ", no children}"
+        | otherwise = showLeaf d e b ++ "}\n"
+                      ++ indent (d + 1) ++ "children:"
+                      ++ (intercalate "\n" . map (uncurry (go (d+1))) . HM.toList $ cs)
+
+instance Show LeafBody where
+  show (LeafBody h f) =
+    "hists: " ++ showHists (HS.toList h) ++ ", freq: " ++ show f
+    where
+      showHDists :: HashSet Hist.Leaf -> String
+      showHDists = show . fmap (intercalate "," . V.toList . fmap f'4 . Prob.freqToDist . Hist.frequency . Hist.body) . HS.toList
+
+      showHists :: [Hist.Leaf] -> String
+      showHists = show . fmap (T.concat . V.toList . Hist.obs . Hist.body)
+
+
 
 showLeaf :: Bool -> Leaf -> String
 showLeaf full (Leaf b c p) =
