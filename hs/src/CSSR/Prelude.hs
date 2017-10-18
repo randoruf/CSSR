@@ -14,6 +14,8 @@ module CSSR.Prelude
   , (>$>)
   , vHead
   , CSSR.Prelude.head
+  , log2
+  , discreteEntropy
   , GVector
   , UVector
   , LText
@@ -117,4 +119,10 @@ vHead v =
   then Nothing
   else Just (V.head v)
 
+
+log2 :: Floating f => f -> f
+log2 x = log x / log 2
+
+discreteEntropy :: Floating f => f -> f -> f
+discreteEntropy a b = a * log2 (a / b)
 
