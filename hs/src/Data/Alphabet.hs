@@ -20,6 +20,8 @@ mkAlphabet alphas = Alphabet (V.fromList list) (HM.fromList $ zip list [0..])
     list :: [Event]
     list = HS.toList alphas
 
+size :: Alphabet -> Int
+size = V.length . idxToSym
 
 instance Show Alphabet where
   -- a little convoluted in the case of strings

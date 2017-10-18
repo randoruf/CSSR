@@ -4,7 +4,6 @@ import CSSR.Prelude
 import qualified Data.Tree.Hist as Hist
 import qualified Data.Vector as V
 
-
 type InferredDistribution = [(Hist.Leaf, Double)]
 
 variation :: InferredDistribution -> Double -> Double

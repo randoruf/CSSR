@@ -48,12 +48,15 @@ library
       CSSR.Algorithm.Phase2
       CSSR.Algorithm.Phase3
       CSSR.Algorithm.Utils
+      CSSR.AllStates
       CSSR.Inferred
       CSSR.Prelude
       CSSR.Prelude.Mutable
       CSSR.Probabilistic
       CSSR.Results
       CSSR.Statistics.CMu
+      CSSR.Statistics.Entropy.Relative
+      CSSR.Statistics.Entropy.RelativeRate
       CSSR.Statistics.EntropyRate
       CSSR.Statistics.F1
       CSSR.Statistics.Variation
