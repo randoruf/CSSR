@@ -56,6 +56,7 @@ library
       CSSR.Statistics.CMu
       CSSR.Statistics.EntropyRate
       CSSR.Statistics.F1
+      CSSR.Statistics.Variation
       Data.Alphabet
       Data.List.Set
       Data.MTree.Looping
