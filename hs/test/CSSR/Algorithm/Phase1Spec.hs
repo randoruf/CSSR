@@ -1,4 +1,3 @@
-{-# LANGUAGE TupleSections #-}
 module CSSR.Algorithm.Phase1Spec where
 
 import CSSR.Prelude.Test
@@ -26,37 +25,56 @@ spec =
     describe "depth 0" $ depthSpec d0 [([27,42],"")]
 
     let d1 = getChildren d0
-    describe "depth 1" $ depthSpec d1 [([15,12],"0"), ([12,30],"1")]
-
-    -- let d1_0 = find (\l -> obs l == "0") d1
-    -- describe "the \"0\" child" $ do
-    --   it "has two"
-    --   depthSpec d1 [([15,12],"0"), ([12,30],"1")]
-
+    describe "depth 1" $ do
+      childrenSpec "0" d1 [([6, 8], "10")]
+      childrenSpec "1" d1 [([0,12], "01")]
+      depthSpec d1
+        [ ([15,12],"0")
+        , ([12,30],"1")
+        ]
 
     let d2 = getChildren d1
-    describe "depth 2" $ depthSpec d2 [([6,8],"00"), ([0,12], "10"), ([8,4],"01"), ([12,18],"11")]
+    describe "depth 2" $
+      depthSpec d2
+        [ ([ 6, 8],"00")
+        , ([ 8, 4],"10")
+        , ([ 0,12],"01")
+        , ([12,18],"11")
+        ]
 
     let d3 = getChildren d2
-    describe "depth 3" $ depthSpec d3 $
+    describe "depth 3" $ depthSpec d3
       [ ([1,1],"000")
-      , ([0,1],"100")
+      , ([1,1],"100")
       , ([1,1],"110")
-      , ([1,1],"001")
+      , ([0,1],"001")
       , ([0,1],"101")
       , ([1,1],"011")
       , ([1,1],"111")
       ]
   where
-    str2Event :: Event -> [Event]
-    str2Event = fmap T.singleton . T.unpack
+    str2Event :: Event -> Vector Event
+    str2Event = V.fromList . fmap T.singleton . T.unpack
 
     bodyShouldContain :: [Leaf] -> [([Integer],Event)] -> Expectation
     bodyShouldContain d cs = fmap ((frequency . body) &&& (obs . body)) d
-             `shouldContain` fmap ( V.fromList        *** (V.fromList . str2Event)) cs
+             `shouldContain` fmap ( V.fromList        ***  str2Event  ) cs
+
+    findObs :: Text -> [Leaf] -> Maybe Leaf
+    findObs es = find ((== str2Event es) . view (bodyL.obsL))
 
     getChildren :: [Leaf] -> [Leaf]
     getChildren = foldr ((<>) . HM.elems . children) []
+
+    getChildren_ :: Leaf -> [Leaf]
+    getChildren_ = HM.elems . children
+
+    childrenSpec :: Text -> [Leaf] -> [([Integer], Text)] -> SpecWith ()
+    childrenSpec p d exp =
+      it ("should have a node, "<> show p <>", with children " <> show exp) $ do
+        let childs = fmap getChildren_ (findObs p d)
+        guard (isJust childs)
+        bodyShouldContain (fromJust childs) exp
 
     depthSpec :: [Leaf] -> [([Integer],Event)] -> SpecWith (Arg Expectation)
     depthSpec d exp = do
