@@ -10,7 +10,7 @@ import qualified Data.Tree.Parse as P
 import qualified Data.Text             as T
 import qualified Data.HashSet          as HS (member, fromList, union)
 import qualified Data.HashMap.Strict   as HM (insert, toList)
-import qualified Data.Vector           as V (empty, length, drop, filter, slice, fromList)
+import qualified Data.Vector           as V -- (empty, length, drop, filter, slice, fromList)
 import qualified Data.HashTable.Class  as H (new, lookup, insert, toList)
 
 
