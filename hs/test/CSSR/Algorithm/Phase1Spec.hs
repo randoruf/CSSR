@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 module CSSR.Algorithm.Phase1Spec where
 
 import CSSR.Prelude.Test
@@ -16,21 +17,36 @@ main = hspec spec
 spec :: Spec
 spec =
   describe "a short even process" $ do
-    let tree = initialization 2 short_ep
+    let tree = initialization 3 short_ep
 
     it "finds the correct alphabet" $
       mkAlphabet (HS.fromList ["0", "1"]) == alphabet tree
 
     let d0 = [root tree]
-    describe "depth 0" $ depthSpec d0 [([28,42],"")]
+    describe "depth 0" $ depthSpec d0 [([27,42],"")]
 
     let d1 = getChildren d0
     describe "depth 1" $ depthSpec d1 [([15,12],"0"), ([12,30],"1")]
 
+    -- let d1_0 = find (\l -> obs l == "0") d1
+    -- describe "the \"0\" child" $ do
+    --   it "has two"
+    --   depthSpec d1 [([15,12],"0"), ([12,30],"1")]
+
+
     let d2 = getChildren d1
-    describe "depth 2" $ depthSpec d2 [([1,1],"00"), ([0,1], "10"), ([1,1],"01"), ([1,1],"11")]
+    describe "depth 2" $ depthSpec d2 [([6,8],"00"), ([0,12], "10"), ([8,4],"01"), ([12,18],"11")]
 
-
+    let d3 = getChildren d2
+    describe "depth 3" $ depthSpec d3 $
+      [ ([1,1],"000")
+      , ([0,1],"100")
+      , ([1,1],"110")
+      , ([1,1],"001")
+      , ([0,1],"101")
+      , ([1,1],"011")
+      , ([1,1],"111")
+      ]
   where
     str2Event :: Event -> [Event]
     str2Event = fmap T.singleton . T.unpack

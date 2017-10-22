@@ -228,9 +228,11 @@ excisable :: forall s . Double -> MLeaf s -> ST s (Maybe (MLeaf s))
 excisable sig ll = do
   hs <- readSTRef (histories ll)
   traceM $ "current: " <> Hist.showHists (HS.toList hs)
+  traceM $ "distribution: " <> Hist.showHDists (HS.toList hs)
   as <- getAncestors ll
   ahs <- mapM (readSTRef . histories) as
   traceM $ "ancestors: " <> show (map (Hist.showHists . HS.toList) ahs)
+  traceM $ "distribtions: " <> show (map (Hist.showHDists . HS.toList) ahs)
   I.excisableM (readSTRef . parent) (readSTRef . frequency) sig ll
 
 getAncestors :: MLeaf s -> ST s [MLeaf s]

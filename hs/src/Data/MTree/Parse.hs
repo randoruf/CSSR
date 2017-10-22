@@ -71,11 +71,11 @@ addPath events = walk (V.length events)
         Nothing    -> mkLf dp  leaf
       where
         dp' :: Int
-        dp' = dp - 1
+        dp' = pred dp
 
     mkLf :: Int -> MLeaf s -> ST s ()
     mkLf 0 _ = pure ()
-    mkLf (subtract 1 -> dp') l = do
+    mkLf (pred -> dp') l = do
       lf <- newLeaf (V.drop dp' events)
       H.insert (children l) (events ! dp') lf
       mkLf dp' lf
