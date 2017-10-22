@@ -130,16 +130,13 @@ freeze ml = do
       where
         icer :: (Event, MLNode s) -> ST s (Maybe (Event, L.Leaf))
         icer (e, Left lp) = do
-          traceM "icer left"
           let f = frequency lp
-          hs <- head . sort . fmap (Hist.obs . Hist.body) . HS.toList <$> readSTRef (histories lp)
+          hs <- minimum . fmap (Hist.obs . Hist.body) . HS.toList <$> readSTRef (histories lp)
           case hs of
-            Nothing -> impossible "all leaves have at least one history (TODO: move to NonEmpty)"
+            Nothing -> impossible "all leaves have at least one history (TODO: move to NonEmptySet)"
             Just h  -> return $ Just (e, L.Leaf (Left $ L.LeafRep h) mempty Nothing)
 
-        icer (e, Right lp) = do
-          traceM "icer right"
-          Just . (e,) <$> freeze lp
+        icer (e, Right lp) = Just . (e,) <$> freeze lp
 
 
 mkLeaf :: Maybe (MLeaf s) -> [Hist.Leaf] -> ST s (MLeaf s)
@@ -230,20 +227,12 @@ isHomogeneous sig ll = do
 excisable :: forall s . Double -> MLeaf s -> ST s (Maybe (MLeaf s))
 excisable sig ll = do
   hs <- readSTRef (histories ll)
-  traceM $ "current: " <> showHists (HS.toList hs)
+  traceM $ "current: " <> Hist.showHists (HS.toList hs)
   as <- getAncestors ll
   ahs <- mapM (readSTRef . histories) as
-  traceM $ "ancestors: " <> show (map (showHists . HS.toList) ahs)
+  traceM $ "ancestors: " <> show (map (Hist.showHists . HS.toList) ahs)
   I.excisableM (readSTRef . parent) (readSTRef . frequency) sig ll
 
 getAncestors :: MLeaf s -> ST s [MLeaf s]
 getAncestors = I.getAncestorsM (readSTRef . parent)
-
-showHists :: [Hist.Leaf] -> String
-showHists = show . fmap (T.concat . V.toList . Hist.obs . Hist.body)
-
-showHDists :: HashSet Hist.Leaf -> String
-showHDists = show . fmap (intercalate "," . V.toList . fmap f'4 . Prob.freqToDist . Hist.frequency . Hist.body) . HS.toList
-
-
 

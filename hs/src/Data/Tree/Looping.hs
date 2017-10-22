@@ -92,21 +92,14 @@ instance Show Leaf where
 
       go :: Int -> Event -> Leaf -> String
       go d e (Leaf b cs _)
-        | length cs == 0 = showLeaf d e b ++ ", no children}"
+        | null cs   = showLeaf d e b ++ ", no children}"
         | otherwise = showLeaf d e b ++ "}\n"
                       ++ indent (d + 1) ++ "children:"
                       ++ (intercalate "\n" . map (uncurry (go (d+1))) . HM.toList $ cs)
 
 instance Show LeafBody where
   show (LeafBody h f) =
-    "hists: " ++ showHists (HS.toList h) ++ ", freq: " ++ show f
-    where
-      showHDists :: HashSet Hist.Leaf -> String
-      showHDists = show . fmap (intercalate "," . V.toList . fmap f'4 . Prob.freqToDist . Hist.frequency . Hist.body) . HS.toList
-
-      showHists :: [Hist.Leaf] -> String
-      showHists = show . fmap (T.concat . V.toList . Hist.obs . Hist.body)
-
+    "hists: " ++ Hist.showHists (HS.toList h) ++ ", freq: " ++ show f
 
 
 showLeaf :: Bool -> Leaf -> String

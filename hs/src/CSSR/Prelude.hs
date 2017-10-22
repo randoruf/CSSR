@@ -6,6 +6,8 @@ module CSSR.Prelude
   , groupBy
   , identity
   , unsafeHead
+  , minimum
+  , unsafeMinimum
   , minimumBy
   , unsafeMinimumBy
   , impossible
@@ -31,7 +33,7 @@ import Control.Exception   as X
 import Control.Monad       as X
 import Control.DeepSeq     as X (NFData, deepseq)
 import Data.Either         as X
-import Data.Foldable       as X hiding (minimumBy)
+import Data.Foldable       as X hiding (minimumBy, minimum)
 import Data.Function       as X (on)
 import Data.List           as X (intercalate, nub, (\\), sort, sortBy, delete)
 import Data.Maybe          as X (catMaybes)
@@ -50,7 +52,7 @@ import GHC.Generics        as X (Generic)
 import GHC.Natural         as X (Natural)
 import Lens.Micro.Platform as X
 import Lens.Micro.Internal as X
-import Prelude             as X hiding (id, head)
+import Prelude             as X hiding (id, head, minimum)
 
 import qualified Data.Vector.Generic as GV (Vector)
 import qualified Data.Vector.Unboxed as UV (Vector)
@@ -58,11 +60,20 @@ import qualified Data.Text.Lazy      as LT (Text)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Foldable       as F
 import qualified Data.Vector         as V
-import qualified Prelude             as P
+import qualified Prelude             as P hiding (minimum)
 import Numeric
 
 identity :: a -> a
 identity = P.id
+
+unsafeMinimum :: Ord a => Foldable t => t a -> a
+unsafeMinimum = F.minimum
+
+minimum :: Ord a => Foldable t => t a -> Maybe a
+minimum as
+  | null as   = Nothing
+  | otherwise = Just $ unsafeMinimum as
+
 
 unsafeMinimumBy :: Foldable t => (a -> a -> Ordering) -> t a -> a
 unsafeMinimumBy = F.minimumBy

@@ -6,23 +6,18 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Data.Tree.Hist where
 
-import Data.List
 import qualified Data.HashMap.Strict as HM
-import Data.Vector ((!))
+import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as GV
-import Lens.Micro.Internal
-import GHC.Generics (Generic)
-import Data.Hashable
-import qualified Data.Tree.Internal as I
 
-
+import CSSR.Prelude
 import CSSR.Probabilistic (Probabilistic)
-import qualified CSSR.Probabilistic as Prob (Probabilistic(..))
+import Data.Alphabet
+import qualified CSSR.Probabilistic as Prob
+import qualified Data.Tree.Internal as I
 import qualified Data.Tree.Parse as P
 import qualified Data.Tree.Parse as Parse
-import Data.Alphabet
-import CSSR.Prelude
 
 
 -------------------------------------------------------------------------------
@@ -58,7 +53,7 @@ instance Show Leaf where
 
       go :: Int -> Event -> Leaf -> String
       go d e (Leaf b cs)
-        | length cs == 0 = showLeaf d e b ++ ", no children}"
+        | null cs   = showLeaf d e b ++ ", no children}"
         | otherwise = showLeaf d e b ++ "}\n"
                       ++ indent (d + 1) ++ "children:"
                       ++ (intercalate "\n" . map (uncurry (go (d+1))) . HM.toList $ cs)
@@ -173,4 +168,14 @@ instance Ixed Leaf where
 
 navigate :: Tree -> Vector Event -> Maybe Leaf
 navigate (view rootL -> rt) history = I.navigate (\ls e -> HM.lookup e (view childrenL ls)) rt history
+
+-------------------------------------------------------------------------------
+-- Show helper functions
+-------------------------------------------------------------------------------
+
+showHists :: [Leaf] -> String
+showHists = T.unpack . T.intercalate "," . fmap (T.concat . V.toList . obs . body)
+
+showHDists :: [Leaf] -> String
+showHDists = show . fmap (intercalate "," . V.toList . fmap f'4 . Prob.freqToDist . frequency . body)
 
