@@ -28,15 +28,15 @@ import CSSR.Prelude
 import Data.MTree.Looping as ML
 import Data.Maybe
 import Data.Tree.Looping as L hiding (excisable, homogeneous)
+import qualified CSSR.Prelude.Vector as V
+import qualified CSSR.Probabilistic as Prob
 import qualified Data.Text as T
 import qualified Data.Tree.Hist as Hist
 import qualified Data.Sequence as S
 import qualified Data.List.Set as Set
 import qualified Data.HashSet as HS
 import qualified Data.HashMap.Strict as HM
-import qualified Data.Vector as V
 import qualified Data.HashTable.Class as H
-import qualified CSSR.Probabilistic as Prob
 
 import CSSR.Prelude.Mutable
 -- for doctest
@@ -124,7 +124,7 @@ nextChilds active = (ML.childHistories >=> mapM activeAsLeaf . groupHistory) act
     activeAsLeaf s = ML.mkLeaf (Just active) >$> s
 
     groupHistory :: [Hist.Leaf] -> [(Event, [Hist.Leaf])]
-    groupHistory = groupBy (fromMaybe "" . vHead . view (Hist.bodyL . Hist.obsL))
+    groupHistory = groupBy (fromMaybe "" . V.head . view (Hist.bodyL . Hist.obsL))
 
 
 -- ========================================================================= --
@@ -135,7 +135,7 @@ test1 sig htree = do
   findTerminals sig q ts
   cs::[(Event,MLNode s)] <- H.toList (ML.children rt)
   let go :: (Event, MLNode s) -> ST s Int
-      go (e, n) = do
+      go (e, n) =
         case n of
           Left loop -> pure (-1)
           Right c -> do

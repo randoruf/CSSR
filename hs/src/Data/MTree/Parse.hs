@@ -7,10 +7,10 @@ import Control.Monad
 import Data.Alphabet
 import qualified Data.Tree.Parse as P
 
+import qualified CSSR.Prelude.Vector   as V
 import qualified Data.Text             as T
 import qualified Data.HashSet          as HS (member, fromList, union)
 import qualified Data.HashMap.Strict   as HM (insert, toList)
-import qualified Data.Vector           as V -- (empty, length, drop, filter, slice, fromList)
 import qualified Data.HashTable.Class  as H (new, lookup, insert, toList)
 
 
@@ -37,7 +37,7 @@ newLeaf = mkMLeaf 1
 -- Here's a given scenario:
 --  * We encounter the history say "110"
 --  * We go to the parse tree at the root
---  * We take the 0 child of the root
+--  * We take the 1 child of the root
 --  * We then take the 1 child of 0 (=10)
 --  * We then take the 1 child of 10 (=110)
 --
@@ -53,11 +53,11 @@ newLeaf = mkMLeaf 1
 -- <BLANKLINE>
 --      " "->PLeaf{obs: [], count: 1, ls: <>}
 --           children:
---           "0"->PLeaf{obs: ["0"], count: 1, ls: <>}
+--           "1"->PLeaf{obs: ["1"], count: 1, ls: <>}
 --                children:
---                "1"->PLeaf{obs: ["1","0"], count: 1, ls: <>}
+--                "1"->PLeaf{obs: ["1","1"], count: 1, ls: <>}
 --                     children:
---                     "1"->PLeaf{obs: ["1","1","0"], count: 1, ls: <>, no children}
+--                     "0"->PLeaf{obs: ["1","1","0"], count: 1, ls: <>, no children}
 --------------------------------------------------------------------------------
 addPath :: Vector Event -> MLeaf s -> ST s ()
 addPath events = walk (V.length events)
@@ -82,7 +82,45 @@ addPath events = walk (V.length events)
 
 -- | helper function for addPath
 addPath_ :: Text -> MLeaf s -> ST s ()
-addPath_ (V.fromList . fmap T.singleton . T.unpack->evt) = addPath evt
+addPath_ = addPath . V.fromList . fmap T.singleton . T.unpack
+
+addPath' :: Vector Event -> MLeaf s -> ST s ()
+addPath' events l
+  | V.null events = pure ()
+  | otherwise     = walk (foldObs events) l
+  where
+    foldObs :: Vector Event -> [Vector Event]
+    foldObs
+      -- convert to a list for easier pattern matching
+      = V.toList
+      -- make sure you safely remove the empty list
+      . fromMaybe mempty
+      -- drop the empty list
+      . V.tail
+      -- continuously snoc on elements in a scan: ["a","b","c"] -> [[],["a"],["a","b"],["a","b","c"]]
+      . V.scanl' V.snoc mempty
+
+    walk :: [Vector Event] -> MLeaf s -> ST s ()
+    walk     [] _ = pure ()
+    walk (o:os) l = do
+      modifySTRef (count l) (+1)
+      H.lookup (children l) (nonEmptyLast o) >>= \case
+        Just child -> walk os child
+        Nothing    -> mkLf (o:os) l
+
+    mkLf :: [Vector Event] -> MLeaf s -> ST s ()
+    mkLf [] _ = pure ()
+    mkLf (o:os) l = do
+      lf <- newLeaf o
+      H.insert (children l) (nonEmptyLast o) lf
+      mkLf os lf
+
+    nonEmptyLast :: Vector Event -> Event
+    nonEmptyLast = fromMaybe (impossible "all vectors passed in are nonempty via `foldObs`") . V.last
+
+-- | helper function for addPath
+addPath'_ :: Text -> MLeaf s -> ST s ()
+addPath'_ = addPath' . V.fromList . fmap T.singleton . T.unpack
 
 freeze :: forall s . MLeaf s -> ST s P.Leaf
 freeze MLeaf{obs, count, children} = P.Leaf
@@ -101,7 +139,7 @@ freeze MLeaf{obs, count, children} = P.Leaf
 buildMTree :: Int -> DataFileContents -> ST s (MLeaf s)
 buildMTree n' (V.filter isValid -> cs) = do
   rt <- newRoot
-  forM_ [0 .. V.length cs] (\i -> addPath (sliceEvents i) rt)
+  forM_ [0 .. V.length cs] (\i -> addPath' (sliceEvents i) rt)
   return rt
   where
     n :: Int
@@ -125,15 +163,12 @@ buildTree n df = P.Tree n (runST $ buildMTree n df >>= freeze)
 
 getAlphabet :: P.Tree -> Alphabet
 getAlphabet (P.Tree _ rt) = mkAlphabet $ go mempty [rt]
-  where
-    go :: HashSet Event -> [P.Leaf] -> HashSet Event
-    go es [] = es
-    go es cs = go (HS.union es (keys pairs)) (map snd pairs)
-      where
-        pairs :: [(Event, P.Leaf)]
-        pairs = concatMap (HM.toList . view P.childrenL) cs
+ where
+  go :: HashSet Event -> [P.Leaf] -> HashSet Event
+  go es [] = es
+  go es (topairs->ps) = go (HS.union es (HS.fromList . map fst $ ps)) (map snd ps)
 
-        keys :: [(Event, P.Leaf)] -> HashSet Event
-        keys = HS.fromList . map fst
+  topairs :: [P.Leaf] -> [(Event, P.Leaf)]
+  topairs = concatMap (HM.toList . view P.childrenL)
 
 

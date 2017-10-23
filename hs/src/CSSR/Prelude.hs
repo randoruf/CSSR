@@ -14,7 +14,7 @@ module CSSR.Prelude
   , prettyDecimal
   , f'4
   , (>$>)
-  , vHead
+  , saferBy
   , CSSR.Prelude.head
   , log2
   , discreteEntropy
@@ -36,7 +36,8 @@ import Data.Either         as X
 import Data.Foldable       as X hiding (minimumBy, minimum)
 import Data.Function       as X (on)
 import Data.List           as X (intercalate, nub, (\\), sort, sortBy, delete)
-import Data.Maybe          as X (catMaybes)
+import Data.List.NonEmpty  as X (NonEmpty(..))
+import Data.Maybe          as X (catMaybes, fromMaybe, maybe)
 import Data.Monoid         as X
 import Data.Hashable       as X
 import Data.HashMap.Strict as X (HashMap)
@@ -47,7 +48,7 @@ import Data.Text           as X (Text)
 import Data.Vector         as X (Vector, (!))
 import Data.Vector.Mutable as X (MVector)
 import Debug.Trace         as X
-import GHC.Exts            as X (IsList(fromList))
+import GHC.Exts            as X (IsList(fromList), IsString(..))
 import GHC.Generics        as X (Generic)
 import GHC.Natural         as X (Natural)
 import Lens.Micro.Platform as X
@@ -70,18 +71,13 @@ unsafeMinimum :: Ord a => Foldable t => t a -> a
 unsafeMinimum = F.minimum
 
 minimum :: Ord a => Foldable t => t a -> Maybe a
-minimum as
-  | null as   = Nothing
-  | otherwise = Just $ unsafeMinimum as
-
+minimum = unsafeMinimum `saferBy` null
 
 unsafeMinimumBy :: Foldable t => (a -> a -> Ordering) -> t a -> a
 unsafeMinimumBy = F.minimumBy
 
 minimumBy :: Foldable t => (a -> a -> Ordering) -> t a -> Maybe a
-minimumBy f as
-  | null as   = Nothing
-  | otherwise = Just $ unsafeMinimumBy f as
+minimumBy f = unsafeMinimumBy f `saferBy` null
 
 groupBy :: forall a b . (Hashable b, Eq b) => (a -> b) -> [a] -> [(b, [a])]
 groupBy fn = HM.toList . foldr step mempty
@@ -97,9 +93,7 @@ unsafeHead :: Foldable f => f a -> a
 unsafeHead = P.head . toList
 
 head :: Foldable f => f a -> Maybe a
-head fs
-  | null fs   = Nothing
-  | otherwise = Just (unsafeHead fs)
+head = unsafeHead `saferBy` null
 
 type Locations = HashMap Idx Integer
 type Idx = Integer
@@ -113,7 +107,8 @@ type LText = LT.Text
 instance Hashable x => Hashable (Vector x) where
   hashWithSalt salt = hashWithSalt salt . V.toList
 
-impossible = error
+impossible :: Show msg => msg -> a
+impossible = error . show
 
 prettyDecimal :: RealFloat a => Int -> a -> String
 prettyDecimal p f = showFFloat (Just p) f ""
@@ -124,15 +119,11 @@ f'4 = prettyDecimal 4
 (>$>) :: Monad m => (b -> m c) -> (a, b) -> m (a, c)
 (>$>) f (a, b) = (a,) <$> f b
 
-vHead :: Vector a -> Maybe a
-vHead v =
-  if V.null v
-  then Nothing
-  else Just (V.head v)
-
+saferBy :: (a -> b) -> (a -> Bool) -> a -> Maybe b
+saferBy get isbad a = if isbad a then Nothing else Just (get a)
 
 log2 :: Floating f => f -> f
-log2 x = log x / log 2
+log2 = logBase 2
 
 discreteEntropy :: Floating f => f -> f -> f
 discreteEntropy a b = a * log2 (a / b)
