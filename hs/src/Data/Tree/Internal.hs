@@ -110,25 +110,27 @@ excisableM getParent getFrequency sig l = do
         NotSignificant -> go f as
 
 showLeaf
-  :: (l -> [Vector Integer])
-  -> (l -> [Vector Event])
+  :: (l -> (Bool, [Vector Event]))
+  -> (l -> [Vector Integer])
   -> (l -> [(Event, l)])
   -> Text
+  -> Vector Event
   -> l
   -> String
-showLeaf todists tohists tochilds pre
+showLeaf tohists todists tochilds pre st
   = runIdentity
-  . showLeafM (pure . todists) (pure . tohists) (pure . tochilds) pre
+  . showLeafM (pure . tohists) (pure . todists) (pure . tochilds) pre st
 
 showLeafM
   :: forall l m . Monad m
-  => (l -> m [Vector Integer])
-  -> (l -> m [Vector Event])
+  => (l -> m (Bool, [Vector Event]))
+  -> (l -> m [Vector Integer])
   -> (l -> m [(Event, l)])
   -> Text
+  -> Vector Event
   -> l
   -> m String
-showLeafM todists tohists tochilds pre l = T.unpack <$> go 0 "" l
+showLeafM tohists todists tochilds pre st l = T.unpack <$> go 0 (T.concat $ V.toList st) l
  where
   indent :: Int -> Text
   indent d = T.replicate (5 * d) " "
@@ -148,16 +150,13 @@ showLeafM todists tohists tochilds pre l = T.unpack <$> go 0 "" l
           , T.intercalate "\n" tcs
           ]
 
-  showNode :: Int -> Event -> [Vector Event] -> [Vector Integer] -> Text
-  showNode d e hs fs = T.concat
-    [ "\n"
-    , indent d
-    , e
-    , "->"
-    , pre <> "Leaf{"
-    ,    "obs: " <> showList T.concat hs
-    , ", freq: " <> showList (num2txt show) fs
-    , ", dist: " <> showList (num2txt f'4) (fmap Prob.freqToDist fs)
+  showNode :: Int -> Event -> (Bool, [Vector Event]) -> [Vector Integer] -> Text
+  showNode d e (isloop, hs) fs = T.concat
+    [ "\n", indent d
+    , T.pack (show e), "->", pre <> "Leaf{"
+    , if isloop then "Loop(" else "", "obs: ", showList T.concat hs, if isloop then ")" else ""
+    , if isloop then ""      else ", freq: " <> showList (num2txt show) fs
+    , if isloop then ""      else ", dist: " <> showList (num2txt f'4) (fmap Prob.freqToDist fs)
     ]
 
   showList :: ([a] -> Text) -> [Vector a] -> Text

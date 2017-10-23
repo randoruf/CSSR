@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -43,24 +44,12 @@ instance Show Tree where
   show (Tree d a r) = "Tree {depth " ++ show d ++ ", "++ show a ++"}\n  root:" ++ show r
 
 instance Show Leaf where
-  show = go 1 " "
-    where
-      indent :: Int -> String
-      indent d = replicate (5 * d) ' '
-
-      showLeaf :: Int -> Event -> LeafBody -> String
-      showLeaf d e b = "\n" ++ indent d ++ show e ++"->Leaf{" ++ show b
-
-      go :: Int -> Event -> Leaf -> String
-      go d e (Leaf b cs)
-        | null cs   = showLeaf d e b ++ ", no children}"
-        | otherwise = showLeaf d e b ++ "}\n"
-                      ++ indent (d + 1) ++ "children:"
-                      ++ (intercalate "\n" . map (uncurry (go (d+1))) . HM.toList $ cs)
+  show l = I.showLeaf
+    -- use the generic show instance
+    ((False,) . (:[]) . view lobsL) ((:[]) . view lfrequencyL) (HM.toList . view childrenL) "Hist" (view lobsL l) l
 
 instance Show LeafBody where
-  show (LeafBody o c) =
-    "obs: " ++ show o ++ ", freq: " ++ show c
+  show (LeafBody o f) = "obs: " ++ show o ++ ", freq: " ++ show f ++ ", dist:" ++ show (Prob.freqToDist f)
 
 instance Hashable LeafBody
 instance Hashable Leaf

@@ -34,8 +34,10 @@ data Leaf = Leaf
 bodyL :: Lens' Leaf (Either LeafRep LeafBody)
 bodyL = lens body $ \l b -> l { body = b }
 
+childrenL :: Lens' Leaf (HashMap Event Leaf)
+childrenL = lens children $ \l x -> l { children = x }
 
-data LeafRep = LeafRep
+newtype LeafRep = LeafRep
   { path :: Vector Event
   } deriving (Show, Eq, Generic, NFData)
 
@@ -64,8 +66,6 @@ terminalsL = lens terminals $ \b f -> b { terminals = f }
 rootL :: Lens' Tree Leaf
 rootL = lens root $ \b f -> b { root = f }
 
-
-
 instance Eq Leaf where
   (Leaf b0 c0 _) == (Leaf b1 c1 _) = b0 == b1 && c0 == c1
 
@@ -82,8 +82,29 @@ instance Show Tree where
       ]
 
 instance Show Leaf where
-  show = go 1 " "
+  show l = I.showLeaf toHists toFreqs toChilds "Looping" (toRepr l) l
     where
+      toHists :: Leaf -> (Bool, [Vector Event])
+      toHists l =
+        case body l of
+          Left (LeafRep p) -> (True, [p])
+          Right (LeafBody hs _) -> (False, view Hist.lobsL <$> HS.toList hs)
+
+      toFreqs :: Leaf -> [Vector Integer]
+      toFreqs = either (const []) ((:[]) . view frequencyL) . body
+
+      toChilds :: Leaf -> [(Event, Leaf)]
+      toChilds = HM.toList . view childrenL
+
+      toRepr :: Leaf -> Vector Event
+      toRepr = either path (fromMaybe mempty . head . toHObs) . body
+        where
+          toHObs :: LeafBody -> [Vector Event]
+          toHObs = fmap (view Hist.lobsL) . HS.toList . histories
+
+
+  -- show = go 1 " "
+  --  where
       indent :: Int -> String
       indent d = replicate (5 * d) ' '
 
@@ -92,7 +113,7 @@ instance Show Leaf where
 
       go :: Int -> Event -> Leaf -> String
       go d e (Leaf b cs _)
-        | null cs   = showLeaf d e b ++ ", no children}"
+        | null cs = showLeaf d e b ++ ", no children}"
         | otherwise = showLeaf d e b ++ "}\n"
                       ++ indent (d + 1) ++ "children:"
                       ++ (intercalate "\n" . map (uncurry (go (d+1))) . HM.toList $ cs)
