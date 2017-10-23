@@ -6,8 +6,8 @@ import Data.Functor.Identity (Identity(..))
 import CSSR.Prelude
 import CSSR.Probabilistic (Probabilistic, TestResult(..))
 import qualified CSSR.Probabilistic as Prob
+import qualified Data.Text as T
 import qualified Data.Vector as V
-
 
 
 -- | === Homogeneity
@@ -31,21 +31,6 @@ isHomogeneous
 isHomogeneous getChildDists sig parent =
   runIdentity $ isHomogeneousM (pure . getChildDists) sig parent
 
--- isHomogeneous :: forall s . Double -> MLeaf s -> ST s Bool
--- isHomogeneous sig ll = do
---   pdist <- readSTRef $ frequency ll
---   childs <- childHistories ll
---   hists <- l2hists ll
---   pure $ all (cMatchesP pdist . Prob.frequency) childs
---   where
---     l2hists :: MLeaf s -> ST s [Vector Integer]
---     l2hists lf = do
---       hs <- fmap toList . readSTRef . histories $ lf
---       pure $ fmap (view (Hist.bodyL . Hist.frequencyL)) hs
---
---     cMatchesP :: Vector Integer -> Vector Integer -> Bool
---     cMatchesP pdist cdist = Prob.matchesFreqs sig pdist cdist == Significant
-
 isHomogeneousM
   :: Monad m
   => (parent -> m [Vector Integer])
@@ -53,7 +38,7 @@ isHomogeneousM
   -> (parent, Vector Integer)
   -> m Bool
 isHomogeneousM getChildDists sig (parent, pdist) =
-  all ((== Significant) . (Prob.matchesFreqs sig pdist))
+  all ((== Significant) . Prob.matchesFreqs sig pdist)
   <$> getChildDists parent
 
 
@@ -124,5 +109,61 @@ excisableM getParent getFrequency sig l = do
         Significant    -> pure (Just a)
         NotSignificant -> go f as
 
+showLeaf
+  :: (l -> [Vector Integer])
+  -> (l -> [Vector Event])
+  -> (l -> [(Event, l)])
+  -> Text
+  -> l
+  -> String
+showLeaf todists tohists tochilds pre
+  = runIdentity
+  . showLeafM (pure . todists) (pure . tohists) (pure . tochilds) pre
+
+showLeafM
+  :: forall l m . Monad m
+  => (l -> m [Vector Integer])
+  -> (l -> m [Vector Event])
+  -> (l -> m [(Event, l)])
+  -> Text
+  -> l
+  -> m String
+showLeafM todists tohists tochilds pre l = T.unpack <$> go 0 "" l
+ where
+  indent :: Int -> Text
+  indent d = T.replicate (5 * d) " "
+
+  go :: Int -> Event -> l -> m Text
+  go d e l = do
+    cs' <- tochilds l
+    hs <- tohists l
+    fs <- todists l
+    case cs' of
+      [] -> pure $ showNode d e hs fs <> ", no children}"
+      cs -> do
+        tcs <- mapM (uncurry $ go (d+1)) cs
+        pure . T.concat $
+          [ showNode d e hs fs <> "}\n"
+          , indent (d + 1) <> "children:"
+          , T.intercalate "\n" tcs
+          ]
+
+  showNode :: Int -> Event -> [Vector Event] -> [Vector Integer] -> Text
+  showNode d e hs fs = T.concat
+    [ "\n"
+    , indent d
+    , e
+    , "->"
+    , pre <> "Leaf{"
+    ,    "obs: " <> showList T.concat hs
+    , ", freq: " <> showList (num2txt show) fs
+    , ", dist: " <> showList (num2txt f'4) (fmap Prob.freqToDist fs)
+    ]
+
+  showList :: ([a] -> Text) -> [Vector a] -> Text
+  showList shower as = "[" <> T.intercalate "," (fmap (shower . V.toList) as) <> "]"
+
+  num2txt :: (n -> String) -> [n] -> Text
+  num2txt showone = T.intercalate "," . fmap (T.pack . showone)
 
 
