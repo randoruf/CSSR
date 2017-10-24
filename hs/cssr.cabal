@@ -65,8 +65,8 @@ library
       Data.List.Set
       Data.MTree.Looping
       Data.MTree.Parse
+      Data.Tree.Conditional
       Data.Tree.Graphviz
-      Data.Tree.Hist
       Data.Tree.Internal
       Data.Tree.Looping
       Data.Tree.Parse
@@ -163,7 +163,7 @@ test-suite spec
       CSSR.Fixtures
       CSSR.Prelude.Test
       Data.MTree.ParseSpec
-      Data.Tree.HistSpec
+      Data.Tree.ConditionalSpec
       Data.Tree.InternalSpec
   default-language: Haskell2010
 

@@ -11,7 +11,7 @@ import CSSR.Algorithm.Phase2 (grow)
 import CSSR.Algorithm.Phase3 (refine)
 import Data.MTree.Looping as ML
 import Data.Tree.Looping as L
-import Data.Tree.Hist as H
+import Data.Tree.Conditional as Cond
 import Control.Monad.ST
 
 
@@ -22,7 +22,7 @@ cssr sig d filepath = do
     htree = initialization d contents
     ltree = runST $ do
       lt' <- grow sig htree
-      refine (H.alphabet htree) lt'
+      refine (Cond.alphabet htree) lt'
       ML.freezeTree lt'
 
   print htree

@@ -5,7 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE DeriveGeneric #-}
-module Data.Tree.Hist where
+module Data.Tree.Conditional where
 
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
@@ -22,7 +22,7 @@ import qualified Data.Tree.Parse as Parse
 
 
 -------------------------------------------------------------------------------
--- Hist Tree ADTs
+-- Conditional Tree ADTs
 -------------------------------------------------------------------------------
 data Tree = Tree
   { depth :: Int
@@ -41,12 +41,12 @@ data LeafBody = LeafBody
   } deriving (Eq, Generic, NFData)
 
 instance Show Tree where
-  show (Tree d a r) = "Tree {depth " ++ show d ++ ", "++ show a ++"}\n  root:" ++ show r
+  show (Tree d a r) = "ConditionalTree {depth " ++ show d ++ ", "++ show a ++"}\n  root:" ++ show r
 
 instance Show Leaf where
   show l = I.showLeaf
     -- use the generic show instance
-    ((False,) . (:[]) . view lobsL) ((:[]) . view lfrequencyL) (HM.toList . view childrenL) "Hist" (view lobsL l) l
+    ((False,) . (:[]) . view lobsL) ((:[]) . view lfrequencyL) (HM.toList . view childrenL) "Cond" (view lobsL l) l
 
 instance Show LeafBody where
   show (LeafBody o f) = "obs: " ++ show o ++ ", freq: " ++ show f ++ ", dist:" ++ show (Prob.freqToDist f)
@@ -92,7 +92,7 @@ instance Probabilistic Leaf where
 -------------------------------------------------------------------------------
 
 convert :: P.Tree -> Alphabet -> Tree
-convert (P.Tree d rt) alpha = Tree d alpha (go d rt)
+convert (P.Tree d rt) alpha = trace (show rt) $ Tree d alpha (go d rt)
   where
     go :: Int -> P.Leaf -> Leaf
     go 0 lf = mkLeaf lf mempty

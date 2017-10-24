@@ -31,7 +31,7 @@ import Data.Tree.Looping as L hiding (excisable, homogeneous)
 import qualified CSSR.Prelude.Vector as V
 import qualified CSSR.Probabilistic as Prob
 import qualified Data.Text as T
-import qualified Data.Tree.Hist as Hist
+import qualified Data.Tree.Conditional as Cond
 import qualified Data.Sequence as S
 import qualified Data.List.Set as Set
 import qualified Data.HashSet as HS
@@ -56,7 +56,7 @@ import CSSR.Algorithm.Phase1
 --           "0"->Leaf{obs: ["0"], freq: [1,1], no children}
 -- <BLANKLINE>
 --           "1"->Leaf{obs: ["1"], freq: [1,1], no children}], [0,0], fromList []}
-grow :: forall s . Double -> Hist.Tree -> ST s (ML.MTree s)
+grow :: forall s . Double -> Cond.Tree -> ST s (ML.MTree s)
 grow sig htree = do
   (rt, ts, q) <- queueRoot sig htree
   findTerminals sig q ts
@@ -66,8 +66,8 @@ grow sig htree = do
 -- INIT root looping node
 -- INIT queue of active, unchecked nodes
 -- QUEUE root
-queueRoot :: forall s . Double -> Hist.Tree -> ST s (MLeaf s, STRef s (Set.ListSet (MLeaf s)), Seq (MLeaf s))
-queueRoot sig (Hist.Tree _ a hRoot) = do
+queueRoot :: forall s . Double -> Cond.Tree -> ST s (MLeaf s, STRef s (Set.ListSet (MLeaf s)), Seq (MLeaf s))
+queueRoot sig (Cond.Tree _ a hRoot) = do
   rt <- ML.mkRoot a hRoot   -- INIT root looping node
   ts <- newSTRef $ fromList [rt]       -- INIT queue of active, unchecked nodes
   let q = S.singleton rt    -- QUEUE root
@@ -118,18 +118,18 @@ findTerminals sig q termsRef = do
 --    (one for each symbol in alphabet - must have empirical
 --    observation in dataset).
 nextChilds :: forall s . MLeaf s -> ST s [(Event, MLeaf s)]
-nextChilds active = (ML.childHistories >=> mapM activeAsLeaf . groupHistory) active
+nextChilds active = (ML.childCondories >=> mapM activeAsLeaf . groupCondory) active
   where
-    activeAsLeaf :: (Event, [Hist.Leaf]) -> ST s (Event, MLeaf s)
+    activeAsLeaf :: (Event, [Cond.Leaf]) -> ST s (Event, MLeaf s)
     activeAsLeaf s = ML.mkLeaf (Just active) >$> s
 
-    groupHistory :: [Hist.Leaf] -> [(Event, [Hist.Leaf])]
-    groupHistory = groupBy (fromMaybe "" . V.head . view (Hist.bodyL . Hist.obsL))
+    groupCondory :: [Cond.Leaf] -> [(Event, [Cond.Leaf])]
+    groupCondory = groupBy (fromMaybe "" . V.head . view (Cond.bodyL . Cond.obsL))
 
 
 -- ========================================================================= --
 
-test1 :: Double -> Hist.Tree -> ST s L.Tree
+test1 :: Double -> Cond.Tree -> ST s L.Tree
 test1 sig htree = do
   (rt, ts, q) <- queueRoot sig htree
   findTerminals sig q ts

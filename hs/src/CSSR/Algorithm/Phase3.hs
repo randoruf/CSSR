@@ -52,10 +52,8 @@ import CSSR.Prelude.Mutable
 import CSSR.Probabilistic
 
 import qualified Data.MTree.Looping as L
-import qualified Data.MTree.Parse   as M
+import qualified Data.Tree.Conditional as Cond
 import qualified Data.Tree.Parse    as P
-import qualified Data.Tree.Hist     as Hist
-import qualified Data.MTree.Parse   as MHist
 
 import Data.List.Set (ListSet)
 import qualified Data.List.Set as S
@@ -77,12 +75,12 @@ stepFromTerminal alpha (L.root->rt) term = do
   foldrM go [] $ zip [0..] dist
   where
     w' :: ST s (Vector Event)
-    w' = view (_Just . Hist.bodyL . Hist.obsL) -- get the observed history from the representative history
+    w' = view (_Just . Cond.bodyL . Cond.obsL) -- get the observed history from the representative history
       . minimumBy ordering . HS.toList        -- get the (ASSUMPTION) leaf with the least-sufficiency
       <$> readSTRef (L.histories term)        -- get all histories from the terminal node
       where
-        ordering :: Hist.Leaf -> Hist.Leaf -> Ordering
-        ordering = compare `on` (length . view (Hist.bodyL . Hist.obsL))
+        ordering :: Cond.Leaf -> Cond.Leaf -> Ordering
+        ordering = compare `on` (length . view (Cond.bodyL . Cond.obsL))
 
     navigateToNext :: Int -> ST s (Maybe (L.MLNode s))
     navigateToNext i = do
@@ -179,7 +177,7 @@ refine a tree = do
           -- FIXME: if we find a "terminal-edgeSet" node: merge this node into the terminal node
 
           Just t -> do                               -- is already refined
-            readSTRef (L.histories loop) >>= L.addHistories t       -- merge this node into the terminal node
+            readSTRef (L.histories loop) >>= L.addCondories t       -- merge this node into the terminal node
             loop `L.setTermRef` t                    -- FIXME: seems unnessecary
             pure (dirt, transitions)                 -- continue with current isDirty value
 

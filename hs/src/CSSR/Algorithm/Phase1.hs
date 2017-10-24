@@ -14,8 +14,7 @@ import qualified Data.Vector  as V
 import qualified Data.Tree.Looping  as Looping (Tree)
 import qualified Data.MTree.Parse   as M
 import qualified Data.Tree.Parse    as P
-import qualified Data.Tree.Hist     as Hist
-import qualified Data.MTree.Parse   as MHist
+import qualified Data.Tree.Conditional as Cond
 
 
 -------------------------------------------------------------------------------
@@ -50,9 +49,9 @@ import qualified Data.MTree.Parse   as MHist
 -- <BLANKLINE>
 --                "1"->Leaf{obs: ["1","1"], freq: [1,1], no children}
 -------------------------------------------------------------------------------
-initialization :: Int -> [Char] -> Hist.Tree
+initialization :: Int -> [Char] -> Cond.Tree
 initialization depth (fmap T.singleton -> s) =
-  Hist.convert parseTree $ M.getAlphabet parseTree
+  Cond.convert parseTree $ M.getAlphabet parseTree
   where
     parseTree :: P.Tree
     parseTree = M.buildTree depth . V.fromList $ s

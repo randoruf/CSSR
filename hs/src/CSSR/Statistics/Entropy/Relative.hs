@@ -1,9 +1,9 @@
 module CSSR.Statistics.Entropy.Relative where
 
 import CSSR.Prelude
-import qualified Data.Tree.Hist as Hist
+import qualified Data.Tree.Conditional as Cond
 
-type InferredDistribution = [(Hist.Leaf, Double)]
+type InferredDistribution = [(Cond.Leaf, Double)]
 
 -- calculates the probability of all the max length strings in the
 -- data based on the inferred machine:
@@ -29,7 +29,7 @@ relativeEntropy dist adjustedDataSize =
     relent :: Double
     relent = foldl go 0 dist
 
-    go :: Double -> (Hist.Leaf, Double) -> Double
+    go :: Double -> (Cond.Leaf, Double) -> Double
     go incrementalRelEnt (leaf, inferredProb) =
       case compare observedProb 0 of
         -- it seems to me that we should be checking if the inferred probability is > 0.
@@ -41,4 +41,4 @@ relativeEntropy dist adjustedDataSize =
         _  -> trace ("NO AGGREGATION! dataProb: " <> show observedProb) $ incrementalRelEnt
       where
         observedProb :: Double
-        observedProb = (fromIntegral . sum $ view Hist.lfrequencyL leaf) / adjustedDataSize
+        observedProb = (fromIntegral . sum $ view Cond.lfrequencyL leaf) / adjustedDataSize

@@ -1,10 +1,10 @@
-module Data.Tree.HistSpec where
+module Data.Tree.ConditionalSpec where
 
 import qualified Data.Vector as V
 import qualified Data.Text as T
 
 import CSSR.Prelude.Test
-import Data.Tree.Hist
+import Data.Tree.Conditional
 import qualified Data.MTree.Parse as MParse (getAlphabet, buildTree)
 import qualified Data.Tree.Parse as Parse
 

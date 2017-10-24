@@ -4,7 +4,7 @@ import CSSR.Prelude.Test
 import CSSR.Fixtures (short_ep)
 import CSSR.Algorithm.Phase1 (initialization)
 import Data.Alphabet
-import Data.Tree.Hist
+import Data.Tree.Conditional
 import qualified Data.Text as T
 import qualified Data.HashSet as HS
 import qualified Data.Vector as V

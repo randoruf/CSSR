@@ -1,9 +1,9 @@
 module CSSR.Statistics.Entropy.RelativeRate where
 
 import CSSR.Prelude
-import qualified Data.Tree.Hist as Hist
+import qualified Data.Tree.Conditional as Cond
 
-type InferredDistribution = [(Hist.Leaf, Double)]
+type InferredDistribution = [(Cond.Leaf, Double)]
 {-
 object RelativeEntropyRate extends MathUtils with Logging {
   override def loglevel() = Level.OFF

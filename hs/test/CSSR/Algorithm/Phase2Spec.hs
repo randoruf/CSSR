@@ -12,7 +12,7 @@ import CSSR.Algorithm.Phase1 (initialization)
 import CSSR.Algorithm.Phase2 (grow)
 import Data.Alphabet
 
-import qualified Data.Tree.Hist as Hist
+import qualified Data.Tree.Conditional as Cond
 import qualified Data.MTree.Looping as ML
 import qualified Data.Tree.Looping as L
 import qualified Data.Text as T
@@ -34,8 +34,8 @@ spec =
     rootBody :: L.Tree -> Maybe L.LeafBody
     rootBody = preview (L.rootL . L.bodyL . _Right)
 
-    histories :: HashSet Hist.Leaf -> HashSet (Vector Integer, Vector Event)
-    histories = HS.map ((view Hist.lfrequencyL) &&& (view Hist.lobsL))
+    histories :: HashSet Cond.Leaf -> HashSet (Vector Integer, Vector Event)
+    histories = HS.map ((view Cond.lfrequencyL) &&& (view Cond.lobsL))
 
     asExps :: [([Integer], Text)] -> HashSet (Vector Integer, Vector Event)
     asExps es = HS.fromList $ fmap asExp es

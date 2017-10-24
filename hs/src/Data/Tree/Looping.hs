@@ -17,7 +17,7 @@ import Data.Foldable
 
 import CSSR.Prelude
 import Data.Alphabet
-import qualified Data.Tree.Hist as Hist
+import qualified Data.Tree.Conditional as Cond
 import qualified Data.Tree.Internal as I
 
 
@@ -45,11 +45,11 @@ pathL :: Lens' LeafRep (Vector Event)
 pathL = lens path $ \b f -> b { path = f }
 
 data LeafBody = LeafBody
-  { histories :: HashSet Hist.Leaf
+  { histories :: HashSet Cond.Leaf
   , frequency :: Vector Integer
   } deriving (Eq, Generic, NFData)
 
-historiesL :: Lens' LeafBody (HashSet Hist.Leaf)
+historiesL :: Lens' LeafBody (HashSet Cond.Leaf)
 historiesL = lens histories $ \b f -> b { histories = f }
 
 frequencyL :: Lens' LeafBody (Vector Integer)
@@ -82,13 +82,13 @@ instance Show Tree where
       ]
 
 instance Show Leaf where
-  show l = I.showLeaf toHists toFreqs toChilds "Looping" (toRepr l) l
+  show l = I.showLeaf toConds toFreqs toChilds "Looping" (toRepr l) l
     where
-      toHists :: Leaf -> (Bool, [Vector Event])
-      toHists l =
+      toConds :: Leaf -> (Bool, [Vector Event])
+      toConds l =
         case body l of
           Left (LeafRep p) -> (True, [p])
-          Right (LeafBody hs _) -> (False, view Hist.lobsL <$> HS.toList hs)
+          Right (LeafBody hs _) -> (False, view Cond.lobsL <$> HS.toList hs)
 
       toFreqs :: Leaf -> [Vector Integer]
       toFreqs = either (const []) ((:[]) . view frequencyL) . body
@@ -100,7 +100,7 @@ instance Show Leaf where
       toRepr = either path (fromMaybe mempty . head . toHObs) . body
         where
           toHObs :: LeafBody -> [Vector Event]
-          toHObs = fmap (view Hist.lobsL) . HS.toList . histories
+          toHObs = fmap (view Cond.lobsL) . HS.toList . histories
 
 
   -- show = go 1 " "
@@ -120,7 +120,7 @@ instance Show Leaf where
 
 instance Show LeafBody where
   show (LeafBody h f) =
-    "hists: " ++ Hist.showHists (HS.toList h) ++ ", freq: " ++ show f
+    "hists: " ++ Cond.showHists (HS.toList h) ++ ", freq: " ++ show f
 
 
 showLeaf :: Bool -> Leaf -> String
@@ -129,8 +129,8 @@ showLeaf full (Leaf b c p) =
     Right (LeafBody hs fs) -> strLeaf hs fs c
     Left  (LeafRep v) -> strLoop v
   where
-    showHS :: HashSet Hist.Leaf -> String
-    showHS = show . fmap (show . Hist.obs . Hist.body) . HS.toList
+    showHS :: HashSet Cond.Leaf -> String
+    showHS = show . fmap (show . Cond.obs . Cond.body) . HS.toList
 
     strLoop p       = "Leaf{Loop(" ++ show p ++ ")}"
     strLeaf hs fs c = "Leaf{"      ++ showHS hs ++ ", " ++ show (Prob.freqToDist fs) ++ strChildren c ++  "}"
