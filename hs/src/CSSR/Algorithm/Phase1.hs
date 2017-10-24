@@ -50,8 +50,7 @@ import qualified Data.Tree.Conditional as Cond
 --                "1"->Leaf{obs: ["1","1"], freq: [1,1], no children}
 -------------------------------------------------------------------------------
 initialization :: Int -> [Char] -> Cond.Tree
-initialization depth (fmap T.singleton -> s) =
-  Cond.convert parseTree $ M.getAlphabet parseTree
+initialization depth (fmap T.singleton -> s) = Cond.convert parseTree
   where
     parseTree :: P.Tree
     parseTree = M.buildTree depth . V.fromList $ s

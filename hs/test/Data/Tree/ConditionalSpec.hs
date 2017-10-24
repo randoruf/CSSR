@@ -21,7 +21,7 @@ main = hspec spec
 spec :: Spec
 spec = do
   describe "converting a parse tree to a conditional tree" $ do
-    let tree = Cond.convert Parse.tree (Parse.getAlphabet Parse.tree)
+    let tree = Cond.convert Parse.tree
     it "removes the last children from a Parse Tree" $
       all (isNothing . Cond.navigate tree) $ fmap txt2event ["abc", "bcc"]
 
@@ -31,7 +31,7 @@ spec = do
   describe "a short even process" $ do
     let s = V.fromList . fmap T.singleton $ short_ep
     let ptree = Parse.buildTree 3 s
-    let tree = Cond.convert ptree (Parse.getAlphabet ptree)
+    let tree = Cond.convert ptree
 
     it "finds the correct alphabet" $
       mkAlphabet (HS.fromList ["0", "1"]) == Cond.alphabet tree
@@ -73,7 +73,7 @@ spec = do
   xdescribe "a (1101)+ regex" $ do
     let s = V.fromList . fmap T.singleton . T.unpack $ T.replicate 100 "1101"
     let ptree = Parse.buildTree 6 s
-    let tree = Cond.convert ptree (Parse.getAlphabet ptree)
+    let tree = Cond.convert ptree
 
     it "finds the correct alphabet" $
       mkAlphabet (HS.fromList ["0", "1"]) == Cond.alphabet tree

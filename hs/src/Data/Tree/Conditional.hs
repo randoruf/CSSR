@@ -17,8 +17,8 @@ import CSSR.Probabilistic (Probabilistic)
 import Data.Alphabet
 import qualified CSSR.Probabilistic as Prob
 import qualified Data.Tree.Internal as I
-import qualified Data.Tree.Parse as P
-import qualified Data.Tree.Parse as Parse
+import qualified Data.Tree.Parse  as P
+import qualified Data.MTree.Parse as P (getAlphabet)
 
 
 -------------------------------------------------------------------------------
@@ -91,9 +91,10 @@ instance Probabilistic Leaf where
 -- Convert ParseTree to Tree
 -------------------------------------------------------------------------------
 
-convert :: P.Tree -> Alphabet -> Tree
-convert (P.Tree d rt) alpha = trace (show rt) $ Tree d alpha (go d rt)
+convert :: P.Tree -> Tree
+convert t@(P.Tree d rt) = trace (show rt) $ Tree d alpha (go d rt)
   where
+    alpha = P.getAlphabet t
     go :: Int -> P.Leaf -> Leaf
     go 0 lf = mkLeaf lf mempty
     go d lf = mkLeaf lf $ HM.map (go (d-1)) (view P.childrenL lf)
