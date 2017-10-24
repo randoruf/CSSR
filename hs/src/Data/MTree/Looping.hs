@@ -227,12 +227,12 @@ isHomogeneous sig ll = do
 excisable :: forall s . Double -> MLeaf s -> ST s (Maybe (MLeaf s))
 excisable sig ll = do
   hs <- readSTRef (histories ll)
-  traceM $ "current: " <> Cond.showHists (HS.toList hs)
-  traceM $ "distribution: " <> Cond.showHDists (HS.toList hs)
+  traceM $ "current: " <> Cond.showAllObs (HS.toList hs)
+  traceM $ "distribution: " <> Cond.showAllDists (HS.toList hs)
   as <- getAncestors ll
   ahs <- mapM (readSTRef . histories) as
-  traceM $ "ancestors: " <> show (map (Cond.showHists . HS.toList) ahs)
-  traceM $ "distribtions: " <> show (map (Cond.showHDists . HS.toList) ahs)
+  traceM $ "ancestors: " <> show (map (Cond.showAllObs . HS.toList) ahs)
+  traceM $ "distribtions: " <> show (map (Cond.showAllDists . HS.toList) ahs)
   I.excisableM (readSTRef . parent) (readSTRef . frequency) sig ll
 
 getAncestors :: MLeaf s -> ST s [MLeaf s]

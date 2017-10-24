@@ -120,7 +120,7 @@ instance Show Leaf where
 
 instance Show LeafBody where
   show (LeafBody h f) =
-    "hists: " ++ Cond.showHists (HS.toList h) ++ ", freq: " ++ show f
+    "hists: " ++ Cond.showAllObs (HS.toList h) ++ ", freq: " ++ show f
 
 
 showLeaf :: Bool -> Leaf -> String

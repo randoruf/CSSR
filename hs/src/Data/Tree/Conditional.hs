@@ -162,9 +162,9 @@ navigate (view rootL -> rt) history = I.navigate (\ls e -> HM.lookup e (view chi
 -- Show helper functions
 -------------------------------------------------------------------------------
 
-showHists :: [Leaf] -> String
-showHists = T.unpack . T.intercalate "," . fmap (T.concat . V.toList . obs . body)
+showAllObs :: [Leaf] -> String
+showAllObs = T.unpack . T.intercalate "," . fmap (T.concat . V.toList . obs . body)
 
-showHDists :: [Leaf] -> String
-showHDists = show . fmap (intercalate "," . V.toList . fmap f'4 . Prob.freqToDist . frequency . body)
+showAllDists :: [Leaf] -> String
+showAllDists = show . fmap (intercalate "," . V.toList . fmap f'4 . Prob.freqToDist . frequency . body)
 
