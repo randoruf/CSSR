@@ -84,8 +84,8 @@ addPath events = walk (V.length events)
 addPath_ :: Text -> MLeaf s -> ST s ()
 addPath_ = addPath . V.fromList . fmap T.singleton . T.unpack
 
-addPath' :: Vector Event -> MLeaf s -> ST s ()
-addPath' events l
+addPath' :: MLeaf s -> Vector Event -> ST s ()
+addPath' l events
   | V.null events = pure ()
   | otherwise     = walk (foldObs events) l
   where
@@ -101,7 +101,7 @@ addPath' events l
       . V.scanl' V.snoc mempty
 
     walk :: [Vector Event] -> MLeaf s -> ST s ()
-    walk     [] _ = pure ()
+    walk     [] l = modifySTRef (count l) (+1)
     walk (o:os) l = do
       modifySTRef (count l) (+1)
       H.lookup (children l) (nonEmptyLast o) >>= \case
@@ -119,8 +119,8 @@ addPath' events l
     nonEmptyLast = fromMaybe (impossible "all vectors passed in are nonempty via `foldObs`") . V.last
 
 -- | helper function for addPath
-addPath'_ :: Text -> MLeaf s -> ST s ()
-addPath'_ = addPath' . V.fromList . fmap T.singleton . T.unpack
+addPath'_ :: MLeaf s -> Text -> ST s ()
+addPath'_ l = addPath' l . V.fromList . fmap T.singleton . T.unpack
 
 freeze :: forall s . MLeaf s -> ST s P.Leaf
 freeze MLeaf{obs, count, children} = P.Leaf
@@ -139,7 +139,7 @@ freeze MLeaf{obs, count, children} = P.Leaf
 buildMTree :: Int -> DataFileContents -> ST s (MLeaf s)
 buildMTree n' (V.filter isValid -> cs) = do
   rt <- newRoot
-  forM_ [0 .. V.length cs] (\i -> addPath' (sliceEvents i) rt)
+  forM_ [0 .. V.length cs - n] (addPath' rt . sliceEvents)
   return rt
   where
     n :: Int
@@ -147,9 +147,9 @@ buildMTree n' (V.filter isValid -> cs) = do
 
     sliceEvents :: Int -> Vector Event
     sliceEvents i
-      | i + n  <= length cs = V.slice i n cs               -- get all children of depth
-      | i + n' <= length cs = V.slice i (length cs - i) cs -- but also the depth
-      | otherwise           = V.empty                      -- ignore all others
+      | i + n <= length cs = V.slice i n cs               -- get all children of depth
+      -- | i + n' <= length cs = trace "" $ V.slice i (length cs - i) cs   -- but also the depth
+      | otherwise          = V.empty                      -- ignore all others
 
 isValid :: Event -> Bool
 isValid e = not . HS.member e . HS.fromList $ ["\r", "\n"]

@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE DeriveGeneric #-}
@@ -9,6 +10,7 @@ import qualified Data.Text            as T
 import qualified Data.HashMap.Strict  as HM
 import qualified Data.HashSet         as HS
 import qualified Data.Vector          as V
+import qualified Data.Tree.Internal   as I
 
 import CSSR.Prelude
 
@@ -41,28 +43,33 @@ data Leaf = Leaf
   , children :: HashMap Event Leaf
   } deriving (Eq, Generic)
 
-
 instance Show Leaf where
-  show = go 1 " "
-    where
-      indent :: Int -> String
-      indent d = replicate (5 * d) ' '
+  show l = I.showLeaf
+    -- use the generic show instance
+    ((False,) . (:[]) . obs . body) (\l -> [V.singleton . count . body $ l] ) (HM.toList . children) "Hist" (obs . body $ l) l
 
-      showLeaf :: Int -> String -> LeafBody -> String
-      showLeaf d e b = "\n" ++ indent d ++ show e ++"->PLeaf{" ++ show b
 
-      go :: Int -> Event -> Leaf -> String
-      go d (T.unpack->e) (Leaf b cs)
-        | length cs == 0 = showLeaf d e b ++ ", no children}"
-        | otherwise = showLeaf d e b ++ "}\n"
-                      ++ indent (d + 1) ++ "children:"
-                      ++ printChilds d cs
-
-      printChilds :: Int -> HashMap Event Leaf -> String
-      printChilds d
-        = intercalate "\n"
-        . map (uncurry (go (d+1)))
-        . HM.toList
+-- instance Show Leaf where
+--   show = go 1 " "
+--     where
+--       indent :: Int -> String
+--       indent d = replicate (5 * d) ' '
+--
+--       showLeaf :: Int -> String -> LeafBody -> String
+--       showLeaf d e b = "\n" ++ indent d ++ show e ++"->PLeaf{" ++ show b
+--
+--       go :: Int -> Event -> Leaf -> String
+--       go d (T.unpack->e) (Leaf b cs)
+--         | length cs == 0 = showLeaf d e b ++ ", no children}"
+--         | otherwise = showLeaf d e b ++ "}\n"
+--                       ++ indent (d + 1) ++ "children:"
+--                       ++ printChilds d cs
+--
+--       printChilds :: Int -> HashMap Event Leaf -> String
+--       printChilds d
+--         = intercalate "\n"
+--         . map (uncurry (go (d+1)))
+--         . HM.toList
 
 -- Lenses
 bodyL :: Lens' Leaf LeafBody
