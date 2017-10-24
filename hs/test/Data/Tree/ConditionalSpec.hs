@@ -7,47 +7,25 @@ import CSSR.Prelude.Test
 import Data.Tree.Conditional
 import qualified Data.MTree.Parse as MParse (getAlphabet, buildTree)
 import qualified Data.Tree.Parse as Parse
+import qualified Data.Tree.ParseSpec as Parse (tree) -- use the tree from the parse spec for testing
 
 main :: IO ()
 main = hspec spec
 
 spec :: Spec
-spec = do
-  describe "navigate" $ do
-    findsJust []
-    findsJust ["c"]
-    findsNothing ["a"]
-    findsNothing ["b"]
-    findsJust ["c","c"]
-    findsNothing ["a","c"]
-    findsJust ["b","c"]
-
-  describe "convert" $ do
+spec =
+  describe "converting a parse tree to a conditional tree" $ do
     it "removes the last children from a Parse Tree" $
-      all (isNothing . navigate tree . V.fromList) $ (fmap.fmap) T.singleton ["abc", "bcc"]
+      all (isNothing . navigate tree) $ fmap txt2evts ["abc", "bcc"]
+
     it "keeps the children of last depth" $
-      all (isJust . navigate tree . V.fromList) $ (fmap.fmap) T.singleton ["bc", "cc"]
+      all (isJust . navigate tree) $ fmap txt2evts ["ab", "bc"]
 
   where
-    findsJust :: [Event] -> Spec
-    findsJust path = do
-      let node = findNode path
-      it ("finds node " ++ show path) $ isJust node
-      it ("node " ++ show path ++ "'s path matches") $
-        maybe False ((V.fromList path ==) . view (bodyL . obsL)) node
-
-    findsNothing :: [Event] -> Spec
-    findsNothing path =
-      it ("fails to find node " ++ show path) $
-        isNothing . navigate tree . V.fromList $ path
-
-    findNode :: [Event] -> Maybe Leaf
-    findNode path = navigate tree . V.fromList $ path
-
-    ptree :: Parse.Tree
-    ptree = MParse.buildTree 2 (V.fromList $ T.singleton <$> "abcc")
+    txt2evts :: Text -> Vector Event
+    txt2evts = V.fromList . fmap T.singleton . T.unpack
 
     tree :: Tree
-    tree = convert ptree (MParse.getAlphabet ptree)
+    tree = convert Parse.tree (MParse.getAlphabet Parse.tree)
 
 

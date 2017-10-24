@@ -10,6 +10,9 @@ import qualified Data.MTree.Parse as MParse (getAlphabet, buildTree)
 main :: IO ()
 main = hspec spec
 
+tree :: Tree
+tree = MParse.buildTree 2 (V.fromList $ T.singleton <$> "abcc")
+
 spec :: Spec
 spec =
   describe "buildTree and navigation" $ do
@@ -46,5 +49,3 @@ spec =
     findNode :: Tree -> [Event] -> Maybe Leaf
     findNode tree path = navigate tree . V.fromList $ path
 
-    tree :: Tree
-    tree = MParse.buildTree 2 (V.fromList $ T.singleton <$> "abcc")

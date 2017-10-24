@@ -48,21 +48,16 @@ navigate lookup rt history =
 
 
 navigateM :: forall lf m . Monad m => (lf -> Event -> m (Maybe lf)) -> lf -> Vector Event -> m (Maybe lf)
-navigateM lookup rt history
-  | V.null history = pure (Just rt)
-  | otherwise      = go (fromIntegral (V.length history)) rt
+navigateM lookup rt (V.toList -> history)
+  | null history = pure (Just rt)
+  | otherwise    = go history rt
   where
-    go :: Natural -> lf -> m (Maybe lf)
-    go 0 lf = pure (Just lf)
-    go d lf =
-      lookup lf (history ! nxt)
+    go :: [Event] -> lf -> m (Maybe lf)
+    go []       lf = pure (Just lf)
+    go (nxt:os) lf = lookup lf nxt
       >>= \case
-        Just ch -> go (d - 1) ch
+        Just ch -> go os ch
         Nothing -> pure Nothing
-      where
-        nxt :: Int
-        nxt = fromIntegral (d - 1)
-
 
 -- | returns ancestors in order of how they should be processed
 getAncestors :: (l -> Maybe l) -> l -> [l]
