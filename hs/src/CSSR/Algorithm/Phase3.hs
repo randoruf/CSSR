@@ -85,7 +85,7 @@ stepFromTerminal alpha (L.root->rt) term = do
     navigateToNext :: Int -> ST s (Maybe (L.MLNode s))
     navigateToNext i = do
       w <- w'
-      mnext <- L.walk (Right rt) (w `V.snoc` (idxToSym alpha ! i))
+      mnext <- L.navigateM (Right rt) (w `V.snoc` (idxToSym alpha ! i))
       pure mnext
 
     go :: (Int, Double) -> [Maybe (L.MLNode s)] -> ST s [Maybe (L.MLNode s)]
@@ -177,7 +177,7 @@ refine a tree = do
           -- FIXME: if we find a "terminal-edgeSet" node: merge this node into the terminal node
 
           Just t -> do                               -- is already refined
-            readSTRef (L.histories loop) >>= L.addCondories t       -- merge this node into the terminal node
+            readSTRef (L.histories loop) >>= L.addHistories t       -- merge this node into the terminal node
             loop `L.setTermRef` t                    -- FIXME: seems unnessecary
             pure (dirt, transitions)                 -- continue with current isDirty value
 

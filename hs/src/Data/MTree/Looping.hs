@@ -58,16 +58,15 @@ getTermRef :: MLeaf s -> ST s (Maybe (Terminal s))
 getTermRef = readSTRef . terminalReference
 
 
-childCondories :: MLeaf s -> ST s [Cond.Leaf]
-childCondories
+childHistories :: MLeaf s -> ST s [Cond.Leaf]
+childHistories
   = fmap (foldMap (HM.elems . Cond.children) . HS.toList)
   . readSTRef
   . histories
 
 
--- Don't do anything for now. Otherwise we loose a lot of purity.
-addCondories :: MLeaf s -> HashSet Cond.Leaf -> ST s ()
-addCondories leaf hs = do
+addHistories :: MLeaf s -> HashSet Cond.Leaf -> ST s ()
+addHistories leaf hs = do
   modifySTRef (frequency leaf) addFreqs
   modifySTRef (histories leaf) (HS.union hs)
   where
@@ -159,21 +158,6 @@ mkRoot (Alphabet vec _) hrt = MLeaf
   <*> newSTRef False
 
 
-walk :: forall s . MLNode s -> Vector Event -> ST s (Maybe (MLNode s))
-walk cur es
-  | null es   = pure (Just cur)
-  | otherwise =
-    H.lookup (children (reify cur)) (V.head es)
-    >>= \case
-      Nothing -> return Nothing
-      Just n  -> walk n (V.tail es)
-  where
-    reify :: MLNode s -> MLeaf s
-    reify (Left  l) = l
-    reify (Right l) = l
-
-
--- Note that walk and navigate go in reverse walking order >.<
 navigateM :: forall s . MLNode s -> Vector Event -> ST s (Maybe (MLNode s))
 navigateM = I.navigateM (H.lookup . children . reify)
   where
@@ -222,17 +206,17 @@ isHomogeneous sig ll = do
   I.isHomogeneousM childDists sig (ll, pdist)
   where
     childDists :: MLeaf s -> ST s [Vector Integer]
-    childDists = (fmap.fmap) Prob.frequency . childCondories
+    childDists = (fmap.fmap) Prob.frequency . childHistories
 
 excisable :: forall s . Double -> MLeaf s -> ST s (Maybe (MLeaf s))
 excisable sig ll = do
-  hs <- readSTRef (histories ll)
-  traceM $ "current: " <> Cond.showAllObs (HS.toList hs)
-  traceM $ "distribution: " <> Cond.showAllDists (HS.toList hs)
-  as <- getAncestors ll
-  ahs <- mapM (readSTRef . histories) as
-  traceM $ "ancestors: " <> show (map (Cond.showAllObs . HS.toList) ahs)
-  traceM $ "distribtions: " <> show (map (Cond.showAllDists . HS.toList) ahs)
+  -- hs <- readSTRef (histories ll)
+  -- traceM $ "current: " <> Cond.showAllObs (HS.toList hs)
+  -- traceM $ "distribution: " <> Cond.showAllDists (HS.toList hs)
+  -- as <- getAncestors ll
+  -- ahs <- mapM (readSTRef . histories) as
+  -- traceM $ "ancestors: " <> show (map (Cond.showAllObs . HS.toList) ahs)
+  -- traceM $ "distribtions: " <> show (map (Cond.showAllDists . HS.toList) ahs)
   I.excisableM (readSTRef . parent) (readSTRef . frequency) sig ll
 
 getAncestors :: MLeaf s -> ST s [MLeaf s]

@@ -89,7 +89,7 @@ queueRoot sig (Cond.Tree _ a hRoot) = do
 --   ENDIF
 -- ENDWHILE
 findTerminals :: forall s . Double -> Seq (MLeaf s) -> STRef s (Set.ListSet (MLeaf s)) -> ST s ()
-findTerminals sig q termsRef = do
+findTerminals sig q termsRef =
   unless (S.null q) $ do
     let (active, next) = splitTerminals q
     terms <- readSTRef termsRef
@@ -100,11 +100,11 @@ findTerminals sig q termsRef = do
         cs <- childsToLoops active
         forM_ cs $ uncurry (H.insert (ML.children active))
         let cs'' = rights . map snd $ cs
-        modifySTRef termsRef ((`Set.union` fromList cs'') . (Set.delete active))
+        modifySTRef termsRef ((`Set.union` fromList cs'') . Set.delete active)
         findTerminals sig (next <> S.fromList cs'') termsRef
   where
     childsToLoops :: MLeaf s -> ST s [(Event, MLNode s)]
-    childsToLoops = nextChilds >=> mapM ((>$>) findLoops)
+    childsToLoops = nextChilds >=> mapM (findLoops >$>)
 
     splitTerminals :: Seq (MLeaf s) -> (MLeaf s, Seq (MLeaf s))
     splitTerminals = ((`S.index` 0) *** identity) . S.splitAt 1
@@ -118,13 +118,13 @@ findTerminals sig q termsRef = do
 --    (one for each symbol in alphabet - must have empirical
 --    observation in dataset).
 nextChilds :: forall s . MLeaf s -> ST s [(Event, MLeaf s)]
-nextChilds active = (ML.childCondories >=> mapM activeAsLeaf . groupCondory) active
+nextChilds active = (ML.childHistories >=> mapM activeAsLeaf . groupHistory) active
   where
     activeAsLeaf :: (Event, [Cond.Leaf]) -> ST s (Event, MLeaf s)
     activeAsLeaf s = ML.mkLeaf (Just active) >$> s
 
-    groupCondory :: [Cond.Leaf] -> [(Event, [Cond.Leaf])]
-    groupCondory = groupBy (fromMaybe "" . V.head . view (Cond.bodyL . Cond.obsL))
+    groupHistory :: [Cond.Leaf] -> [(Event, [Cond.Leaf])]
+    groupHistory = groupBy (fromMaybe "" . V.head . view (Cond.bodyL . Cond.obsL))
 
 
 -- ========================================================================= --
