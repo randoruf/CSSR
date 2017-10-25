@@ -59,33 +59,12 @@ newLeaf = mkMLeaf 1
 --                     children:
 --                     "0"->PLeaf{obs: ["1","1","0"], count: 1, ls: <>, no children}
 --------------------------------------------------------------------------------
-addPath :: MLeaf s -> Vector Event -> ST s ()
-addPath l events = walk (V.length events) l
-  where
-    walk :: Int -> MLeaf s -> ST s ()
-    walk 0 _ = return ()
-    walk dp leaf@(MLeaf _ c childs) = do
-      modifySTRef c (+1)
-      H.lookup childs (events ! dp') >>= \case
-        Just child -> walk dp' child
-        Nothing    -> mkLf dp  leaf
-      where
-        dp' :: Int
-        dp' = pred dp
-
-    mkLf :: Int -> MLeaf s -> ST s ()
-    mkLf 0 _ = pure ()
-    mkLf (pred -> dp') l = do
-      lf <- newLeaf (V.drop dp' events)
-      H.insert (children l) (events ! dp') lf
-      mkLf dp' lf
-
 -- | helper function for addPath
 addPath_ :: MLeaf s -> Text -> ST s ()
 addPath_ l = addPath l . V.fromList . fmap T.singleton . T.unpack
 
-addPath' :: MLeaf s -> Vector Event -> ST s ()
-addPath' l events
+addPath :: MLeaf s -> Vector Event -> ST s ()
+addPath l events
   | V.null events = pure ()
   | otherwise     = walk (foldObs events) l
   where
@@ -124,10 +103,6 @@ foldObs
   . V.reverse
 
 
--- | helper function for addPath
-addPath'_ :: MLeaf s -> Text -> ST s ()
-addPath'_ l = addPath' l . V.fromList . fmap T.singleton . T.unpack
-
 freeze :: forall s . MLeaf s -> ST s P.Leaf
 freeze MLeaf{obs, count, children} = P.Leaf
   <$> mkBody
@@ -145,7 +120,7 @@ freeze MLeaf{obs, count, children} = P.Leaf
 buildMTree :: Int -> DataFileContents -> ST s (MLeaf s)
 buildMTree n' (V.filter isValid -> cs) = do
   rt <- newRoot
-  forM_ [0 .. V.length cs - n] (addPath' rt . sliceEvents)
+  forM_ [0 .. V.length cs - n] (addPath rt . sliceEvents)
   return rt
   where
     n :: Int
