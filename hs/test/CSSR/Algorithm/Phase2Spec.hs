@@ -7,11 +7,12 @@ import qualified Data.HashSet as HS
 import qualified Data.Vector as V
 import qualified Data.HashMap.Strict as HM
 
-import CSSR.Fixtures (short_ep)
+import CSSR.Fixtures (longEP)
 import CSSR.Algorithm.Phase1 (initialization)
 import CSSR.Algorithm.Phase2 (grow)
 import Data.Alphabet
 
+import qualified CSSR.Probabilistic as Prob
 import qualified Data.Tree.Conditional as Cond
 import qualified Data.MTree.Looping as ML
 import qualified Data.Tree.Looping as L
@@ -24,23 +25,30 @@ main = hspec spec
 spec :: Spec
 spec =
   describe "a short even process root" $ do
-    let ltree = runST $ grow 0.01 (initialization 1 short_ep) >>= ML.freezeTree
-    it "should have the expected frequency" $
-      L.frequency <$> (rootBody ltree) `shouldBe` Just (V.fromList [28,42])
-    it "should have the expected histories" $
-      (histories . L.histories) <$> (rootBody ltree) `shouldBe` Just (asExps [([28,42], "")])
+    let ltree = runST $ grow 0.01 (initialization 1 longEP) >>= ML.freezeTree
+
+    describe "the root looping node" $ do
+      it "should have the expected frequency" $
+        Prob.freqToDist <$> preview (L.rootL . L.bodyL . _Right . L.frequencyL) ltree `shouldSatisfy`
+          maybe False (isApprox 0.05 (V.fromList [0.33,0.66]))
+
+      context "its histories" $
+        historiesMatchSpec "root" (L.root ltree) [([0.33,0.66], "")]
 
   where
-    rootBody :: L.Tree -> Maybe L.LeafBody
-    rootBody = preview (L.rootL . L.bodyL . _Right)
+    toCheckableHists :: L.LeafBody -> HashSet (Vector Double, Vector Event)
+    toCheckableHists = HS.map ((Prob.freqToDist . view Cond.lfrequencyL) &&& view Cond.lobsL) . L.histories
 
-    histories :: HashSet Cond.Leaf -> HashSet (Vector Integer, Vector Event)
-    histories = HS.map ((view Cond.lfrequencyL) &&& (view Cond.lobsL))
-
-    asExps :: [([Integer], Text)] -> HashSet (Vector Integer, Vector Event)
-    asExps es = HS.fromList $ fmap asExp es
+    historiesMatchSpec :: Text -> L.Leaf -> [([Double], Text)] -> Spec
+    historiesMatchSpec t ll = mapM_ $ \(dist, txtObs) ->
+      it ("should have a history of " <> T.unpack txtObs <> " with distribution: " <> show dist) $
+        (check >>= find ((== txt2event txtObs) . snd)) `shouldSatisfy`
+            maybe False (isApprox 0.05 (V.fromList dist) . fst)
       where
-        asExp :: ([Integer], Text) -> (Vector Integer, Vector Event)
-        asExp (is, es) = (V.fromList is, V.fromList . map T.singleton . T.unpack $ es)
+        check :: Maybe [(Vector Double, Vector Event)]
+        check = toCheckableHists <$> preview (L.bodyL . _Right . L.historiesL) ll
+
+        toCheckableHists :: HashSet Cond.Leaf -> [(Vector Double, Vector Event)]
+        toCheckableHists = HS.toList . HS.map ((Prob.freqToDist . view Cond.lfrequencyL) &&& view Cond.lobsL)
 
 
