@@ -29,7 +29,7 @@ spec = do
 addPathSpec :: Spec
 addPathSpec = do
   describe "when we encounter the history 110" $ do
-    let rt = runST $ mkLeaf (addPath (str2Event "110"))
+    let rt = runST $ mkLeaf (flip addPath (str2Event "110"))
     it "keeps the root node" $ view (P.bodyL . P.obsL) rt == V.empty
     it "bumps the root node count" $ view (P.bodyL . P.countL) rt == 1
 
@@ -42,7 +42,7 @@ addPathSpec = do
     childChecks (show "10", _10) "1" (str2Event "110") 1
 
   xdescribe "adding two histories: 101 and 110" $ do
-    let rt = runST $ mkLeaf (\rs -> addPath (str2Event "110") rs >> addPath (str2Event "101") rs)
+    let rt = runST $ mkLeaf (\rs -> addPath rs (str2Event "110") >> addPath rs (str2Event "101"))
 
     it "keeps the root node" $ view (P.bodyL . P.obsL) rt == V.empty
     it "bumps the root node count twice" $ view (P.bodyL . P.countL) rt == 2
@@ -65,8 +65,8 @@ addPath_Spec :: SpecWith (Arg Bool)
 addPath_Spec =
   it "is identical to addPath of a String" $ property $ \str ->
     let
-      lp  = runST $ mkLeaf (addPath (V.fromList $ fmap T.singleton str))
-      lp' = runST $ mkLeaf (addPath_ (T.pack str))
+      lp  = runST $ mkLeaf (flip addPath (V.fromList $ fmap T.singleton str))
+      lp' = runST $ mkLeaf (flip addPath_ (T.pack str))
     in
       lp == lp'
 

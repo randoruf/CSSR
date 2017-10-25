@@ -59,8 +59,8 @@ newLeaf = mkMLeaf 1
 --                     children:
 --                     "0"->PLeaf{obs: ["1","1","0"], count: 1, ls: <>, no children}
 --------------------------------------------------------------------------------
-addPath :: Vector Event -> MLeaf s -> ST s ()
-addPath events = walk (V.length events)
+addPath :: MLeaf s -> Vector Event -> ST s ()
+addPath l events = walk (V.length events) l
   where
     walk :: Int -> MLeaf s -> ST s ()
     walk 0 _ = return ()
@@ -81,30 +81,19 @@ addPath events = walk (V.length events)
       mkLf dp' lf
 
 -- | helper function for addPath
-addPath_ :: Text -> MLeaf s -> ST s ()
-addPath_ = addPath . V.fromList . fmap T.singleton . T.unpack
+addPath_ :: MLeaf s -> Text -> ST s ()
+addPath_ l = addPath l . V.fromList . fmap T.singleton . T.unpack
 
 addPath' :: MLeaf s -> Vector Event -> ST s ()
 addPath' l events
   | V.null events = pure ()
   | otherwise     = walk (foldObs events) l
   where
-    foldObs :: Vector Event -> [Vector Event]
-    foldObs
-      -- convert to a list for easier pattern matching
-      = V.toList
-      -- make sure you safely remove the empty list
-      . fromMaybe mempty
-      -- drop the empty list
-      . V.tail
-      -- continuously snoc on elements in a scan: ["a","b","c"] -> [[],["a"],["a","b"],["a","b","c"]]
-      . V.scanl' V.snoc mempty
-
     walk :: [Vector Event] -> MLeaf s -> ST s ()
     walk     [] l = modifySTRef (count l) (+1)
     walk (o:os) l = do
       modifySTRef (count l) (+1)
-      H.lookup (children l) (nonEmptyLast o) >>= \case
+      H.lookup (children l) (nonEmptyHead o) >>= \case
         Just child -> walk os child
         Nothing    -> mkLf (o:os) l
 
@@ -112,11 +101,28 @@ addPath' l events
     mkLf [] _ = pure ()
     mkLf (o:os) l = do
       lf <- newLeaf o
-      H.insert (children l) (nonEmptyLast o) lf
+      H.insert (children l) (nonEmptyHead o) lf
       mkLf os lf
 
-    nonEmptyLast :: Vector Event -> Event
-    nonEmptyLast = fromMaybe (impossible "all vectors passed in are nonempty via `foldObs`") . V.last
+    nonEmptyHead :: Vector Event -> Event
+    nonEmptyHead = fromMaybe (impossible msg) . V.head
+      where
+        msg :: String
+        msg = "all vectors passed in are nonempty via `foldObs`"
+
+foldObs :: Vector Event -> [Vector Event]
+foldObs
+  -- convert to a list for easier pattern matching
+  = V.toList
+  -- make sure you safely remove the empty list
+  . fromMaybe mempty
+  -- drop the empty list
+  . V.tail
+  -- continuously snoc on elements in a scan: [c, b, a] -> [[], [c], [b, c], [a, b, c]]
+  . V.scanl' (\s x -> V.cons x s) mempty
+  -- add each observation in from the least dependent to most dependent: [a, b, c] -> [c, b, a]
+  . V.reverse
+
 
 -- | helper function for addPath
 addPath'_ :: MLeaf s -> Text -> ST s ()

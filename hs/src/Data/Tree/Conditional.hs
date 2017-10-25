@@ -92,9 +92,11 @@ instance Probabilistic Leaf where
 -------------------------------------------------------------------------------
 
 convert :: P.Tree -> Tree
-convert t@(P.Tree d rt) = trace (show rt) $ Tree d alpha (go d rt)
+convert t@(P.Tree d rt) = Tree d alpha (go d rt)
   where
+    alpha :: Alphabet
     alpha = P.getAlphabet t
+
     go :: Int -> P.Leaf -> Leaf
     go 0 lf = mkLeaf lf mempty
     go d lf = mkLeaf lf $ HM.map (go (d-1)) (view P.childrenL lf)
@@ -103,14 +105,13 @@ convert t@(P.Tree d rt) = trace (show rt) $ Tree d alpha (go d rt)
     mkLeaf (P.Leaf (P.LeafBody o _ _) cs) = Leaf (mkBody o cs)
 
     mkBody :: Vector Event -> HashMap Event P.Leaf -> LeafBody
-    mkBody o cs = LeafBody o (mkFrequency cs alpha)
+    mkBody o cs = LeafBody o (mkFrequency o cs alpha)
 
-    mkFrequency :: HashMap Event P.Leaf -> Alphabet -> Vector Integer
-    mkFrequency cs (Alphabet vec _) =
-      V.map (\s -> (maybe 0 getCounts . HM.lookup s) cs) vec
+    mkFrequency :: Vector Event -> HashMap Event P.Leaf -> Alphabet -> Vector Integer
+    mkFrequency os cs (Alphabet vec _) = V.map (fromMaybe 0 . findParseCount os) vec
 
-    getCounts :: P.Leaf -> Integer
-    getCounts = view (P.bodyL . P.countL)
+    findParseCount :: Vector Event -> Event -> Maybe Integer
+    findParseCount os e = view (P.bodyL . P.countL) <$> P.navigate t (os `V.snoc` e)
 
 
 -------------------------------------------------------------------------------

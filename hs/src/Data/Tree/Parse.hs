@@ -46,7 +46,7 @@ data Leaf = Leaf
 instance Show Leaf where
   show l = I.showLeaf
     -- use the generic show instance
-    ((False,) . (:[]) . obs . body) (\l -> [V.singleton . count . body $ l] ) (HM.toList . children) "Hist" (obs . body $ l) l
+    ((False,) . (:[]) . obs . body) (\l -> [V.singleton . count . body $ l] ) (HM.toList . children) "Parse" (obs . body $ l) l
 
 
 -- instance Show Leaf where
