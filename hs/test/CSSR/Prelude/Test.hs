@@ -1,20 +1,48 @@
 module CSSR.Prelude.Test
   ( module X
-  , str2Event
-  )
-  where
+  , txt2event
+  , nodesShouldContain
+  , findObs
+  , getChildren
+  , getChildren_
+  , isApprox
+  ) where
 
 import CSSR.Prelude as X
 
 import Data.Maybe as X
 import Test.Hspec as X
 import Test.Hspec.QuickCheck as X
+
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import qualified Data.HashMap.Strict as HM (elems)
+import qualified CSSR.Probabilistic as Prob (freqToDist)
 
 
+txt2event :: Text -> Vector Event
+txt2event = V.fromList . fmap T.singleton . T.unpack
 
-str2Event :: Event -> Vector Event
-str2Event = V.fromList . fmap T.singleton . T.unpack
+nodesShouldContain :: Show l => (l -> Vector Integer) -> (l -> Vector Event) -> [l] -> [([Double], Event)] -> Expectation
+nodesShouldContain toF toO ls exs =
+  forM_ exs $ \(dist, ex) -> do
+    let found = find ((txt2event ex ==) . toO) ls
+    findObs toO ex ls `shouldSatisfy` maybe False ((V.fromList dist ~=) . Prob.freqToDist . toF)
 
+findObs :: (l -> Vector Event) -> Text -> [l] -> Maybe l
+findObs toO exp = find ((== txt2event exp) . toO)
+
+getChildren :: (l -> HashMap Event l) -> [l] -> [l]
+getChildren f = foldr ((<>) . getChildren_ f) []
+
+getChildren_ :: (l -> HashMap Event l) -> l -> [l]
+getChildren_ toChs = HM.elems . toChs
+
+isApprox :: (Ord f, Fractional f) => f -> Vector f -> Vector f -> Bool
+isApprox eps d0 d1
+  = length d0 == length d1
+  && all ((< eps) . abs) (V.zipWith (-) d0 d1)
+
+(~=) :: (Ord f, Fractional f) => Vector f -> Vector f -> Bool
+(~=) = isApprox 0.1 -- high epsilon since we are working with a very small sample size (60ish characters)
 
