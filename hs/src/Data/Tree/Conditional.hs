@@ -90,7 +90,6 @@ instance Probabilistic Leaf where
 -------------------------------------------------------------------------------
 -- Convert ParseTree to Tree
 -------------------------------------------------------------------------------
-
 convert :: P.Tree -> Tree
 convert t@(P.Tree d rt) = Tree d alpha (go d rt)
   where
@@ -107,6 +106,8 @@ convert t@(P.Tree d rt) = Tree d alpha (go d rt)
     mkBody :: Vector Event -> HashMap Event P.Leaf -> LeafBody
     mkBody o cs = LeafBody o (mkFrequency o cs alpha)
 
+    -- Note that a conditional tree travels from least dependent to most
+    -- dependent histories, but frequencies are _next step distributions._
     mkFrequency :: Vector Event -> HashMap Event P.Leaf -> Alphabet -> Vector Integer
     mkFrequency os cs (Alphabet vec _) = V.map (fromMaybe 0 . findParseCount os) vec
 
