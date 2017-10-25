@@ -52,12 +52,21 @@ navigateM lookup rt (V.toList -> history)
   | null history = pure (Just rt)
   | otherwise    = go history rt
   where
+    -- FIXME: use MaybeT here
     go :: [Event] -> lf -> m (Maybe lf)
-    go []       lf = pure (Just lf)
-    go (nxt:os) lf = lookup lf nxt
-      >>= \case
-        Just ch -> go os ch
-        Nothing -> pure Nothing
+    go [] lf = pure (Just lf)
+    go os@(x:_) lf = case splitLast os of
+      Nothing      -> impossible "nonempty here"
+      Just (os, o) -> lookup lf o
+        >>= \case
+          Just ch -> go os ch
+          Nothing -> pure Nothing
+
+    splitLast :: [a] -> Maybe ([a], a)
+    splitLast = \case
+      [] -> Nothing
+      as -> Just (init as, last as)
+
 
 -- | returns ancestors in order of how they should be processed
 getAncestors :: (l -> Maybe l) -> l -> [l]

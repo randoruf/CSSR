@@ -166,5 +166,10 @@ instance Ixed Leaf where
 -- >>> navigate (Tree 1 newRoot) (V.fromList ["test"])
 -- Nothing
 --
+-- navigate :: Tree -> Vector Event -> Maybe Leaf
+-- navigate tree history = view rootL tree ^? ix history
+
 navigate :: Tree -> Vector Event -> Maybe Leaf
-navigate tree history = view rootL tree ^? ix history
+navigate (view rootL -> rt) history = I.navigate (\ls e -> HM.lookup e (view childrenL ls)) rt history
+
+

@@ -16,18 +16,19 @@ tree = MParse.buildTree 2 (V.fromList $ T.singleton <$> "abcc")
 spec :: Spec
 spec =
   describe "buildTree and navigation" $ do
+    traceM (show tree)
     describe "depth 0" $
       tree `hasPath` []
 
     describe "depth 1" $ do
-      tree `hasPath` ["a"]
-      tree `hasPath` ["b"]
-      tree `doesn'tHave` ["c"]
+      tree `hasPath` ["c"]
+      tree `doesn'tHave` ["a"]
+      tree `doesn'tHave` ["b"]
 
     describe "depth 2" $ do
-      tree `hasPath` ["a","b"]
       tree `hasPath` ["b","c"]
-      tree `doesn'tHave` ["c","c"]
+      tree `hasPath` ["c","c"]
+      tree `doesn'tHave` ["a","b"]
 
     describe "depth 3" $ do
       tree `hasPath` ["a","b","c"]
