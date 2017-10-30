@@ -40,7 +40,6 @@ isHomogeneousM
 isHomogeneousM getChildDists sig (parent, pdist) =
   all (Prob.isSameDist' sig pdist)
   <$> ((\s -> trace (show ((fmap f'4 . Prob.freqToDist) <$> s, fmap f'4 (Prob.freqToDist pdist), Prob.isSameDist' sig pdist <$> s)) (pure s)) =<< getChildDists parent)
-  where
 
 
 navigate :: forall lf . (lf -> Event -> Maybe lf) -> lf -> Vector Event -> Maybe lf
@@ -111,7 +110,7 @@ excisableM getParent getFrequency sig l = do
     go f (a:as) = do
       af <- getFrequency a
       case Prob.isSameDist' sig f af of
-        True    -> pure (Just a)
+        True  -> pure (Just a)
         False -> go f as
 
 showLeaf

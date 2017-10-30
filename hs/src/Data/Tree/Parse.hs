@@ -111,10 +111,10 @@ countL = lens count $ \lf a -> lf { count = a }
 bodyCountL :: Lens' Leaf Integer
 bodyCountL = bodyL . countL
 
-locationsL :: Lens' LeafBody (Locations)
+locationsL :: Lens' LeafBody Locations
 locationsL = lens locations $ \lf a -> lf { locations = a }
 
-bodyLocationsL :: Lens' Leaf (Locations)
+bodyLocationsL :: Lens' Leaf Locations
 bodyLocationsL = bodyL . locationsL
 
 instance Show LeafBody where

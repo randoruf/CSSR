@@ -45,14 +45,12 @@ spec =
     let d2 = foldMap (HM.elems . L.children) d1
     describe "depth 2" $ depthSpec d2
       [ Left ""
-      , Right ([1/4, 3/4], "10", ["1", "0"])
+      , Right ([0, 1], "01", [])
       ]
 
     let d3 = foldMap (HM.elems . L.children) d2
-    describe "depth 3" $ depthSpec d3
-      [ Right ([1/2, 1/2], "101", [])
-      , Right ([1/4, 3/4], "100", [])
-      ]
+    describe "depth 3" $
+      it "should be empty" $ null d3
 
   where
     toCheckableHists :: L.LeafBody -> HashSet (Vector Double, Vector Event)
@@ -111,6 +109,6 @@ spec =
         bod2obs = map (view Cond.lobsL) . HS.toList . L.histories
 
       predicate :: [Double] -> [Event] -> (Vector Double, [Vector Event], [Event]) -> Bool
-      predicate d0 cs0 (d1, _, cs1) = isApprox 0.05 (V.fromList d0) d1 && (HS.fromList cs0) == (HS.fromList cs1)
+      predicate d0 cs0 (d1, _, cs1) = isApprox 0.05 (V.fromList d0) d1 && HS.fromList cs0 == HS.fromList cs1
 
 
