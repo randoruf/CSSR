@@ -1,3 +1,15 @@
+-------------------------------------------------------------------------------
+-- |
+-- Module    :  Data.Tree.Parse
+-- Copyright :  (c) Sam Stites 2017
+-- License   :  MIT
+-- Maintainer:  sam@stites.io
+-- Stability :  experimental
+-- Portability: non-portable
+--
+-- a prefix-trie of histories which shows all events leading up to a series,
+-- including the counts of how frequent the time series is.
+-------------------------------------------------------------------------------
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE RankNTypes #-}
@@ -47,29 +59,6 @@ instance Show Leaf where
   show l = I.showLeaf
     -- use the generic show instance
     ((False,) . (:[]) . obs . body) (\l -> [V.singleton . count . body $ l] ) (HM.toList . children) "Parse" (obs . body $ l) l
-
-
--- instance Show Leaf where
---   show = go 1 " "
---     where
---       indent :: Int -> String
---       indent d = replicate (5 * d) ' '
---
---       showLeaf :: Int -> String -> LeafBody -> String
---       showLeaf d e b = "\n" ++ indent d ++ show e ++"->PLeaf{" ++ show b
---
---       go :: Int -> Event -> Leaf -> String
---       go d (T.unpack->e) (Leaf b cs)
---         | length cs == 0 = showLeaf d e b ++ ", no children}"
---         | otherwise = showLeaf d e b ++ "}\n"
---                       ++ indent (d + 1) ++ "children:"
---                       ++ printChilds d cs
---
---       printChilds :: Int -> HashMap Event Leaf -> String
---       printChilds d
---         = intercalate "\n"
---         . map (uncurry (go (d+1)))
---         . HM.toList
 
 -- Lenses
 bodyL :: Lens' Leaf LeafBody
