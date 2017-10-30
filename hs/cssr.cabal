@@ -160,6 +160,7 @@ test-suite spec
   other-modules:
       CSSR.Algorithm.Phase1Spec
       CSSR.Algorithm.Phase2Spec
+      CSSR.Algorithm.Phase3Spec
       CSSR.Fixtures
       CSSR.Prelude.Test
       Data.MTree.ParseSpec
