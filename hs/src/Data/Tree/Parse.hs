@@ -18,9 +18,7 @@
 module Data.Tree.Parse where
 
 import Data.List
-import qualified Data.Text            as T
 import qualified Data.HashMap.Strict  as HM
-import qualified Data.HashSet         as HS
 import qualified Data.Vector          as V
 import qualified Data.Tree.Internal   as I
 

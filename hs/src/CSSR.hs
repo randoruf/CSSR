@@ -10,7 +10,6 @@ import CSSR.Algorithm.Phase1 (initialization)
 import CSSR.Algorithm.Phase2 (grow)
 import CSSR.Algorithm.Phase3 (refine)
 import Data.MTree.Looping as ML
-import Data.Tree.Looping as L
 import Data.Tree.Conditional as Cond
 import Control.Monad.ST
 

@@ -4,25 +4,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Data.Tree.Looping where
 
-import qualified Data.HashSet as HS
-import qualified Data.HashMap.Strict as HM
-import qualified Data.Vector as V
-import Data.Vector (Vector, (!))
-import Data.Vector.Mutable (MVector)
-import qualified Data.Vector.Mutable as MV
-import qualified Data.HashTable.ST.Cuckoo as C
-import qualified Data.HashTable.Class as H
-import qualified Data.Text as T
-import Data.Foldable
+import qualified Data.HashSet as HS (toList) -- , insert, singleton, delete, foldr)
+import qualified Data.HashMap.Strict as HM (toList)
 
 import CSSR.Prelude
-import Data.Alphabet
-import qualified Data.Tree.Conditional as Cond
-import qualified Data.Tree.Internal as I
 
-
-import CSSR.Probabilistic (Probabilistic, TestResult(..))
-import qualified CSSR.Probabilistic as Prob
+import qualified Data.Tree.Conditional as Cond (Leaf, lobsL, showAllObs)
+import qualified Data.Tree.Internal as I (showLeaf) -- , excisableM)
+import qualified CSSR.Probabilistic as Prob (freqToDist)
 
 
 data Leaf = Leaf
@@ -75,11 +64,20 @@ instance Show Tree where
       [ [ "Looping.Tree"
         , "terminals:"
         ]
-      , (("\t"<>) . showLeaf False) <$> HS.toList ts
+      , (("\t"<>) . showTerm) <$> HS.toList ts
       , [ "root:"
         , show rt
         ]
       ]
+   where
+    showTerm :: Leaf -> String
+    showTerm (Leaf b _ _) =
+      case b of
+        Right (LeafBody hs fs) -> strLeaf (HS.toList hs) fs
+        Left  (LeafRep v) -> strLoop v
+      where
+        strLoop p       = "Leaf{Loop(" ++ show p ++ ")}"
+        strLeaf hs fs = "Leaf{"      ++ Cond.showAllObs hs ++ ", " ++ show (Prob.freqToDist fs :: Vector Double) ++ "}"
 
 instance Show Leaf where
   show l = I.showLeaf toConds toFreqs toChilds "Looping" (toRepr l) l
@@ -102,42 +100,9 @@ instance Show Leaf where
           toHObs :: LeafBody -> [Vector Event]
           toHObs = fmap (view Cond.lobsL) . HS.toList . histories
 
-
-  -- show = go 1 " "
-  --  where
-      indent :: Int -> String
-      indent d = replicate (5 * d) ' '
-
-      showLeaf :: Int -> Event -> Either LeafRep LeafBody -> String
-      showLeaf d e b = "\n" ++ indent d ++ show e ++"->LLeaf{" ++ show b
-
-      go :: Int -> Event -> Leaf -> String
-      go d e (Leaf b cs _)
-        | null cs = showLeaf d e b ++ ", no children}"
-        | otherwise = showLeaf d e b ++ "}\n"
-                      ++ indent (d + 1) ++ "children:"
-                      ++ (intercalate "\n" . map (uncurry (go (d+1))) . HM.toList $ cs)
-
 instance Show LeafBody where
   show (LeafBody h f) =
     "hists: " ++ Cond.showAllObs (HS.toList h) ++ ", freq: " ++ show f
-
-
-showLeaf :: Bool -> Leaf -> String
-showLeaf full (Leaf b c p) =
-  case b of
-    Right (LeafBody hs fs) -> strLeaf hs fs c
-    Left  (LeafRep v) -> strLoop v
-  where
-    showHS :: HashSet Cond.Leaf -> String
-    showHS = show . fmap (show . Cond.obs . Cond.body) . HS.toList
-
-    strLoop p       = "Leaf{Loop(" ++ show p ++ ")}"
-    strLeaf hs fs c = "Leaf{"      ++ showHS hs ++ ", " ++ show (Prob.freqToDist fs) ++ strChildren c ++  "}"
-    strChildren c =
-      if full
-      then ", " ++ show c
-      else ""
 
 instance Hashable LeafBody
 instance Hashable LeafRep
@@ -204,6 +169,8 @@ instance Hashable Leaf where
 type EdgeGroup = (Vector Double, Vector Integer, HashSet Leaf)
 
 groupEdges :: Double -> Tree -> HashSet EdgeGroup
+groupEdges = undefined -- HS.foldr part HS.empty terms
+{-
 groupEdges sig (Tree terms _) = undefined -- HS.foldr part HS.empty terms
   where
     part :: Leaf -> HashSet EdgeGroup -> HashSet EdgeGroup
@@ -238,4 +205,5 @@ groupEdges sig (Tree terms _) = undefined -- HS.foldr part HS.empty terms
 
 excisable :: Double -> Leaf -> Maybe Leaf
 excisable s l = join $ I.excisableM (Just . parent) (preview (bodyL . _Right . frequencyL)) s l
+-}
 

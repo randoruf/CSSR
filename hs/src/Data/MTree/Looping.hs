@@ -5,21 +5,16 @@ module Data.MTree.Looping where
 
 import CSSR.Prelude.Mutable
 import Data.Alphabet
-import CSSR.Probabilistic (Probabilistic, TestResult(..))
 
 import qualified CSSR.Probabilistic  as Prob
 import qualified Data.Tree.Conditional as Cond
 import qualified Data.Tree.Looping   as L
 import qualified Data.Tree.Internal  as I
-import qualified Data.Text as T
 
 
 import qualified Data.HashSet              as HS
 import qualified Data.HashMap.Strict       as HM
 import qualified Data.Vector               as V
-import qualified Data.Sequence             as S
-import qualified Data.Vector.Mutable       as MV
-import qualified Data.Vector.Generic       as GV
 import qualified Data.HashTable.ST.Cuckoo  as C
 import qualified Data.HashTable.Class      as H
 import Data.List.Set (ListSet(..))
@@ -120,15 +115,11 @@ freeze ml = do
     withParent :: Maybe L.Leaf -> L.Leaf -> L.Leaf
     withParent p (L.Leaf bod cs _) = L.Leaf bod cs p
 
-    histObs :: Cond.Leaf -> Vector Event
-    histObs = Cond.obs . Cond.body
-
     freezeDown :: [(Event, MLNode s)] -> ST s (HashMap Event L.Leaf)
     freezeDown cs = HM.fromList . catMaybes <$> mapM icer cs
       where
         icer :: (Event, MLNode s) -> ST s (Maybe (Event, L.Leaf))
         icer (e, Left lp) = do
-          let f = frequency lp
           hs <- minimum . fmap (Cond.obs . Cond.body) . HS.toList <$> readSTRef (histories lp)
           case hs of
             Nothing -> impossible "all leaves have at least one history (TODO: move to NonEmptySet)"
@@ -148,7 +139,7 @@ mkLeaf p hs = MLeaf
 
 
 mkRoot :: Alphabet -> Cond.Leaf -> ST s (MLeaf s)
-mkRoot (Alphabet vec _) hrt = MLeaf
+mkRoot _ hrt = MLeaf
   <$> newSTRef (HS.fromList [hrt])
   <*> newSTRef (view (Cond.bodyL . Cond.frequencyL) hrt)
   <*> H.new

@@ -1,4 +1,4 @@
-module CSSR.Algorithm.Phase1Spec where
+module CSSR.Algorithm.Phase1Spec (spec) where
 
 import CSSR.Prelude.Test
 import CSSR.Fixtures (longEP)

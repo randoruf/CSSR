@@ -5,7 +5,7 @@ import qualified Data.Text as T
 
 import CSSR.Prelude.Test
 import Data.Tree.Parse
-import qualified Data.MTree.Parse as MParse (getAlphabet, buildTree)
+import qualified Data.MTree.Parse as MParse (buildTree)
 
 main :: IO ()
 main = hspec spec

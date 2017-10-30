@@ -60,9 +60,9 @@ import qualified Data.Vector.Unboxed as UV (Vector)
 import qualified Data.Text.Lazy      as LT (Text)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Foldable       as F
-import qualified Data.Vector         as V
 import qualified Prelude             as P hiding (minimum)
-import Numeric
+import Data.Vector.Instances ()
+import Numeric (showFFloat)
 
 identity :: a -> a
 identity = P.id
@@ -104,10 +104,7 @@ type GVector = GV.Vector
 type UVector = UV.Vector
 type LText = LT.Text
 
-instance Hashable x => Hashable (Vector x) where
-  hashWithSalt salt = hashWithSalt salt . V.toList
-
-impossible :: Show msg => msg -> a
+impossible :: Text -> a
 impossible = error . show
 
 prettyDecimal :: RealFloat a => Int -> a -> String

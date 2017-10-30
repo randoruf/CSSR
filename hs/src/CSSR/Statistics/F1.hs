@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-unused-matches #-} -- FIXME: remove when no more undefineds are left
 module CSSR.Statistics.F1 where
 
 import CSSR.Prelude

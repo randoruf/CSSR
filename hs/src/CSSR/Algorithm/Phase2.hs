@@ -23,18 +23,13 @@
 {-# LANGUAGE LambdaCase #-}
 module CSSR.Algorithm.Phase2 where
 
-import qualified Data.Text as T
 import qualified Data.Sequence as S
-import qualified Data.HashSet as HS
-import qualified Data.HashMap.Strict as HM
 import qualified Data.HashTable.Class as H
 
 import CSSR.Prelude.Mutable
 import Data.MTree.Looping as ML
-import Data.Tree.Looping as L hiding (excisable, homogeneous)
 
 import qualified CSSR.Prelude.Vector as V
-import qualified CSSR.Probabilistic as Prob
 import qualified Data.List.Set as Set
 import qualified Data.Tree.Conditional as Cond
 
@@ -66,8 +61,6 @@ findTerminals :: forall s . Double -> Seq (MLeaf s) -> STRef s (Set.ListSet (MLe
 findTerminals sig q termsRef =
   unless (S.null q) $ do
     let (active, next) = splitTerminals q
-    terms <- readSTRef termsRef
-    hs <- readSTRef $ ML.histories active
     isHomogeneous sig active >>= \case
       True  -> findTerminals sig next termsRef
       False -> do

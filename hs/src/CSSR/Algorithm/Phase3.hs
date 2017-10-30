@@ -45,6 +45,7 @@
 -------------------------------------------------------------------------------
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -Wno-unused-matches #-} -- FIXME: remove when collectLeaves has no undefined values
 module CSSR.Algorithm.Phase3 where
 
 import Data.Alphabet
@@ -53,15 +54,11 @@ import CSSR.Probabilistic
 
 import qualified Data.MTree.Looping as L
 import qualified Data.Tree.Conditional as Cond
-import qualified Data.Tree.Parse    as P
 
 import Data.List.Set (ListSet)
 import qualified Data.List.Set as S
-import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import qualified Data.Vector as V
-import Data.Map (Map)
-import qualified Data.Map as Map
 
 
 

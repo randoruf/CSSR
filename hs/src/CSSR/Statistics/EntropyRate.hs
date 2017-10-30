@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-unused-matches #-} -- FIXME: remove when no more undefineds are left
 module CSSR.Statistics.EntropyRate where
 
 import CSSR.Prelude

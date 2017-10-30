@@ -4,15 +4,12 @@ import CSSR.Prelude.Test
 import qualified Data.Vector as V
 import qualified Data.Text as T
 import qualified Data.HashSet as HS
-import qualified Data.HashMap.Strict as HM
 
 import CSSR.Fixtures (shortEP)
 import Data.Alphabet (mkAlphabet)
 
-import qualified CSSR.Probabilistic    as Prob
 import qualified Data.Tree.Conditional as Cond
-import qualified Data.MTree.Parse      as Parse (getAlphabet, buildTree)
-import qualified Data.Tree.Parse       as Parse
+import qualified Data.MTree.Parse      as Parse (buildTree)
 import qualified Data.Tree.ParseSpec   as Parse (tree) -- use the tree from the parse spec for testing
 
 main :: IO ()

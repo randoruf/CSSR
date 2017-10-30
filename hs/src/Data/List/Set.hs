@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -------------------------------------------------------------------------------
@@ -52,7 +54,7 @@ instance Eq a => Monoid (ListSet a) where
   mappend = union
 
 insert :: Eq a => a -> ListSet a -> ListSet a
-insert = insertWith (\old new -> new)
+insert = insertWith (\_ new -> new)
 
 delete :: Eq a => a -> ListSet a -> ListSet a
 delete a (ListSet as) = ListSet (a `Data.List.delete` as)
@@ -87,9 +89,9 @@ intersection (ListSet as) (ListSet bs) = ListSet (as `intersect` bs)
 lookup :: Eq a => a -> ListSet (a, b) -> Maybe b
 lookup a (ListSet as) = Data.List.lookup a as
 
-insertAssocWith :: Eq a => (a -> b -> b) -> a -> b -> ListSet (a, b) -> ListSet (a, b)
+insertAssocWith :: forall a b . Eq a => (b -> b -> b) -> a -> b -> ListSet (a, b) -> ListSet (a, b)
 insertAssocWith fn k v (ListSet kvs) =
   case find ((==k).fst) kvs of
     Nothing -> ListSet $ (k,v):kvs
-    Just v' -> ListSet $ (k,v):(((==k).fst) `Data.List.filter` kvs)
+    Just (_, v') -> ListSet $ (k, fn v' v):(((==k).fst) `Data.List.filter` kvs)
 

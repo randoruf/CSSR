@@ -36,10 +36,10 @@ addPathSpec = do
     childChecks ("root",rt) "0" (txt2event "0") 1
 
     let _0 = findLeaf rt "0"
-    childChecks (show "0", _0) "1" (txt2event "10") 1
+    childChecks ("\"0\"", _0) "1" (txt2event "10") 1
 
     let _10 = findLeaf _0 "1"
-    childChecks (show "10", _10) "1" (txt2event "110") 1
+    childChecks ("\"10\"", _10) "1" (txt2event "110") 1
 
   describe "adding two histories: 101 and 110" $ do
     let rt = runST $
@@ -54,14 +54,14 @@ addPathSpec = do
     childChecks ("root",rt) "1" (txt2event "1") 1
     let _0 = findLeaf rt "0"
     let _1 = findLeaf rt "1"
-    childChecks (show "0", _0) "1" (txt2event "10") 1
-    childChecks (show "1", _1) "0" (txt2event "01") 1
+    childChecks ("\"0\"", _0) "1" (txt2event "10") 1
+    childChecks ("\"1\"", _1) "0" (txt2event "01") 1
 
     let _01 = findLeaf _0 "1"
     let _10 = findLeaf _1 "0"
 
-    childChecks (show "10", _10) "1" (txt2event "101") 1
-    childChecks (show "01", _01) "1" (txt2event "110") 1
+    childChecks ("\"10\"", _10) "1" (txt2event "101") 1
+    childChecks ("\"01\"", _01) "1" (txt2event "110") 1
 
 
 addPath_Spec :: SpecWith (Arg Bool)
@@ -98,17 +98,17 @@ buildTreeSpec =
     noChildTest ("root",rt) "b"
 
     let _c = findLeaf rt "c"
-    childChecks (show "c", _c) "b" (txt2event "bc") 1
-    childChecks (show "c", _c) "c" (txt2event "cc") 1
+    childChecks ("\"c\"", _c) "b" (txt2event "bc") 1
+    childChecks ("\"c\"", _c) "c" (txt2event "cc") 1
 
     let _cc = findLeaf _c "c"
-    childChecks (show "cc", _cc) "b" (txt2event "bcc") 1
+    childChecks ("\"cc\"", _cc) "b" (txt2event "bcc") 1
 
-    noChildrenTest (show "bcc") $ findLeaf _cc "b"
+    noChildrenTest ("\"bcc\"") $ findLeaf _cc "b"
 
     let _bc = findLeaf _c "b"
-    childChecks (show "bc", _bc) "a" (txt2event "abc") 1
-    noChildrenTest (show "abc") $ findLeaf _bc "a"
+    childChecks ("\"bc\"", _bc) "a" (txt2event "abc") 1
+    noChildrenTest ("\"abc\"") $ findLeaf _bc "a"
 
 alphabetSpec :: Spec
 alphabetSpec =
@@ -124,7 +124,7 @@ alphabetSpec =
 -- | General Tests for a child node
 childChecks :: (String, P.Leaf) -> Event -> Vector Event -> Integer -> Spec
 childChecks (name,lf) nxt full c =
-  describe ("the "++ name ++ " node") $ do
+  describe ("the "++ show name ++ " node") $ do
     let child = view P.childrenL lf ^? ix nxt
     let full' = V.toList full
     it ("has a(n) "++ show nxt ++" child") $ isJust child
@@ -137,7 +137,7 @@ childChecks (name,lf) nxt full c =
 -- | Inverse of @childChecks@
 noChildTest :: (String, P.Leaf) -> Event -> Spec
 noChildTest (name, lf) nxt =
-  it ("the "++ name ++ " node has no "++ show nxt ++" child") $
+  it ("the "++ show name ++ " node has no "++ show nxt ++" child") $
     isNothing (view P.childrenL lf ^? ix nxt)
 
 noChildrenTest :: String -> P.Leaf -> Spec

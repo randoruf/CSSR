@@ -109,7 +109,7 @@ convert t@(P.Tree d rt) = Tree d alpha (go d rt)
     -- Note that a conditional tree travels from least dependent to most
     -- dependent histories, but frequencies are _next step distributions._
     mkFrequency :: Vector Event -> HashMap Event P.Leaf -> Alphabet -> Vector Integer
-    mkFrequency os cs (Alphabet vec _) = V.map (fromMaybe 0 . findParseCount os) vec
+    mkFrequency os _ (Alphabet vec _) = V.map (fromMaybe 0 . findParseCount os) vec
 
     findParseCount :: Vector Event -> Event -> Maybe Integer
     findParseCount os e = view (P.bodyL . P.countL) <$> P.navigate t (os `V.snoc` e)

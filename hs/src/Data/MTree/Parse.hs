@@ -3,7 +3,6 @@
 module Data.MTree.Parse where
 
 import CSSR.Prelude.Mutable
-import Control.Monad
 import Data.Alphabet
 import qualified Data.Tree.Parse as P
 
@@ -86,7 +85,6 @@ addPath l events
     nonEmptyHead :: Vector Event -> Event
     nonEmptyHead = fromMaybe (impossible msg) . V.head
       where
-        msg :: String
         msg = "all vectors passed in are nonempty via `foldObs`"
 
 foldObs :: Vector Event -> [Vector Event]

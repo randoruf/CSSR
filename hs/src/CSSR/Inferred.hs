@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-unused-matches #-} -- FIXME: remove when this has no undefined values
 module CSSR.Inferred where
 
 import CSSR.Prelude
@@ -18,6 +19,7 @@ inferredDistribution tree d allstates =
 inferredHist :: Vector Event -> Cond.Tree -> AllStates -> Double
 inferredHist hist tree allstates = foldr totalPerString 0 (zip [0..] allstates)
   where
+    totalPerString :: (Integer, State) -> Double -> Double
     totalPerString = undefined
 {-
 object InferProbabilities extends Logging {

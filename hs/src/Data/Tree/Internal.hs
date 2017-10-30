@@ -4,7 +4,6 @@ module Data.Tree.Internal where
 
 import Data.Functor.Identity (Identity(..))
 import CSSR.Prelude
-import CSSR.Probabilistic (Probabilistic, TestResult(..))
 import qualified CSSR.Probabilistic as Prob
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -54,7 +53,7 @@ navigateM lookup rt (V.toList -> history)
     -- FIXME: use MaybeT here
     go :: [Event] -> lf -> m (Maybe lf)
     go [] lf = pure (Just lf)
-    go os@(x:_) lf = case splitLast os of
+    go os@(_:_) lf = case splitLast os of
       Nothing      -> impossible "nonempty here"
       Just (os, o) -> lookup lf o
         >>= \case

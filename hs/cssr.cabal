@@ -24,18 +24,17 @@ library
   hs-source-dirs:
       src
   default-extensions: MultiParamTypeClasses OverloadedStrings PatternSynonyms TypeFamilies ViewPatterns LambdaCase NoImplicitPrelude
-  ghc-options: -fno-warn-name-shadowing
+  ghc-options: -fno-warn-name-shadowing -Wall
   build-depends:
       base
-    , bytestring
     , containers
     , deepseq
     , hashable
-    , scientific
     , statistics < 0.14
     , text
     , unordered-containers
     , vector
+    , vector-instances
     , microlens-platform
     , microlens
     , hashtables
@@ -78,55 +77,13 @@ executable cssr
   hs-source-dirs:
       app
   default-extensions: MultiParamTypeClasses OverloadedStrings PatternSynonyms TypeFamilies ViewPatterns LambdaCase NoImplicitPrelude
-  ghc-options: -fno-warn-name-shadowing
+  ghc-options: -fno-warn-name-shadowing -Wall
   build-depends:
       base
-    , bytestring
-    , containers
-    , deepseq
-    , hashable
-    , scientific
-    , statistics < 0.14
-    , text
-    , unordered-containers
-    , vector
-    , microlens-platform
-    , microlens
-    , hashtables
-    , primitive
-    , graphviz
-    , directory  >= 1.2.3.0
     , cssr
     , optparse-applicative
   other-modules:
       Cli
-  default-language: Haskell2010
-
-test-suite doctest
-  type: exitcode-stdio-1.0
-  main-is: doctest.hs
-  default-extensions: MultiParamTypeClasses OverloadedStrings PatternSynonyms TypeFamilies ViewPatterns LambdaCase NoImplicitPrelude
-  ghc-options: -fno-warn-name-shadowing
-  build-depends:
-      base
-    , bytestring
-    , containers
-    , deepseq
-    , hashable
-    , scientific
-    , statistics < 0.14
-    , text
-    , unordered-containers
-    , vector
-    , microlens-platform
-    , microlens
-    , hashtables
-    , primitive
-    , graphviz
-    , directory  >= 1.2.3.0
-    , cssr
-    , doctest
-    , QuickCheck
   default-language: Haskell2010
 
 test-suite spec
@@ -135,24 +92,9 @@ test-suite spec
   hs-source-dirs:
       test
   default-extensions: MultiParamTypeClasses OverloadedStrings PatternSynonyms TypeFamilies ViewPatterns LambdaCase NoImplicitPrelude
-  ghc-options: -fno-warn-name-shadowing
+  ghc-options: -fno-warn-name-shadowing -Wall -Wno-unused-top-binds
   build-depends:
       base
-    , bytestring
-    , containers
-    , deepseq
-    , hashable
-    , scientific
-    , statistics < 0.14
-    , text
-    , unordered-containers
-    , vector
-    , microlens-platform
-    , microlens
-    , hashtables
-    , primitive
-    , graphviz
-    , directory  >= 1.2.3.0
     , cssr
     , hspec
     , QuickCheck
@@ -174,24 +116,9 @@ benchmark bench
   hs-source-dirs:
       bench
   default-extensions: MultiParamTypeClasses OverloadedStrings PatternSynonyms TypeFamilies ViewPatterns LambdaCase NoImplicitPrelude
-  ghc-options: -fno-warn-name-shadowing -O2
+  ghc-options: -fno-warn-name-shadowing -Wall -O2
   build-depends:
       base
-    , bytestring
-    , containers
-    , deepseq
-    , hashable
-    , scientific
-    , statistics < 0.14
-    , text
-    , unordered-containers
-    , vector
-    , microlens-platform
-    , microlens
-    , hashtables
-    , primitive
-    , graphviz
-    , directory  >= 1.2.3.0
     , cssr
     , criterion
     , deepseq

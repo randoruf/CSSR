@@ -1,4 +1,4 @@
-module CSSR.Algorithm.Phase2Spec where
+module CSSR.Algorithm.Phase2Spec (spec) where
 
 import CSSR.Prelude.Test
 import CSSR.Prelude.Mutable (runST)
@@ -11,7 +11,6 @@ import qualified Data.HashMap.Strict as HM
 import CSSR.Fixtures (longEP)
 import CSSR.Algorithm.Phase1 (initialization)
 import CSSR.Algorithm.Phase2 (grow)
-import Data.Alphabet
 
 import qualified CSSR.Probabilistic as Prob
 import qualified Data.Tree.Conditional as Cond
@@ -27,6 +26,7 @@ spec :: Spec
 spec =
   describe "a long even process root" $ do
     let ltree = runST $ grow 0.01 (initialization 3 longEP) >>= ML.freezeTree
+    traceM $ show ltree
 
     describe "the root looping node" $ do
       it "should have the expected frequency" $
@@ -53,11 +53,8 @@ spec =
       it "should be empty" $ null d3
 
   where
-    toCheckableHists :: L.LeafBody -> HashSet (Vector Double, Vector Event)
-    toCheckableHists = HS.map ((Prob.freqToDist . view Cond.lfrequencyL) &&& view Cond.lobsL) . L.histories
-
     historiesMatchSpec :: Text -> L.Leaf -> [([Double], Text)] -> Spec
-    historiesMatchSpec t ll = mapM_ $ \(dist, txtObs) ->
+    historiesMatchSpec _ ll = mapM_ $ \(dist, txtObs) ->
       it ("should have a history of " <> T.unpack txtObs <> " with distribution: " <> show dist) $
         (tocheck >>= find ((== txt2event txtObs) . snd)) `shouldSatisfy`
             maybe False (isApprox 0.05 (V.fromList dist) . fst)

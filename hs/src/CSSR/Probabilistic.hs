@@ -12,22 +12,12 @@ module CSSR.Probabilistic
   , isDifferentDist
   , isDifferentDist'
 
-  -- re-exports
-  , TestResult(..)
   ) where
 
 import CSSR.Prelude hiding (sort)
 
-import Control.Monad.Primitive
-import Statistics.Function (sort)
-import Statistics.Test.Types (TestResult(..), significant)
-import Statistics.Types (Sample)
-
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as GV
-import qualified Data.Vector.Unboxed as UV
-import qualified Data.Vector.Unboxed as U
-import qualified Statistics.Test.KolmogorovSmirnov as KS
 
 
 class Probabilistic leaf where
@@ -35,9 +25,6 @@ class Probabilistic leaf where
 
   frequency_ :: GVector v Integer => Monad m => leaf -> m (v Integer)
   frequency_ = pure . frequency
-
-distribution :: (GVector v Integer, GVector v Double, Probabilistic leaf) => leaf -> v Double
-distribution = freqToDist . frequency
 
 addFrequencies :: (GVector v Integer) => v Integer -> v Integer -> v Integer
 addFrequencies = GV.zipWith (+)

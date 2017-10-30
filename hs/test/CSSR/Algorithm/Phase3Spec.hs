@@ -1,22 +1,16 @@
-module CSSR.Algorithm.Phase3Spec where
+module CSSR.Algorithm.Phase3Spec (spec) where
 
 import CSSR.Prelude.Test
 import CSSR.Prelude.Mutable (runST)
-
-import qualified Data.HashSet as HS
-import qualified Data.Vector as V
 
 import CSSR.Fixtures (longEP)
 import CSSR.Algorithm.Phase1 (initialization)
 import CSSR.Algorithm.Phase2 (grow)
 import CSSR.Algorithm.Phase3 (refine)
-import Data.Alphabet
 
-import qualified CSSR.Probabilistic as Prob
 import qualified Data.Tree.Conditional as Cond
 import qualified Data.MTree.Looping as ML
 import qualified Data.Tree.Looping as L
-import qualified Data.Text as T
 
 
 main :: IO ()

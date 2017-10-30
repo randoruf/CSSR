@@ -25,8 +25,7 @@ txt2event = V.fromList . fmap T.singleton . T.unpack
 
 nodesShouldContain :: Show l => Double -> (l -> Vector Integer) -> (l -> Vector Event) -> [l] -> [([Double], Event)] -> Expectation
 nodesShouldContain e toF toO ls exs =
-  forM_ exs $ \(dist, ex) -> do
-    let found = find ((txt2event ex ==) . toO) ls
+  forM_ exs $ \(dist, ex) ->
     findObs toO ex ls `shouldSatisfy` maybe False (isApprox e (V.fromList dist) . Prob.freqToDist . toF)
 
 findObs :: (l -> Vector Event) -> Text -> [l] -> Maybe l

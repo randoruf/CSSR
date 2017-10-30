@@ -1,7 +1,6 @@
 module CSSR.AllStates where
 
 import CSSR.Prelude
-import Data.Alphabet (Alphabet)
 import qualified Data.HashMap.Strict as HM
 
 type State = ()
@@ -13,7 +12,7 @@ frequency :: AllStates -> HashMap State (HashMap Symbol Integer)
 frequency allstates = HM.mapWithKey ssize allstates
   where
     ssize :: State -> HashMap Symbol State -> HashMap Symbol Integer
-    ssize s _ = undefined
+    ssize _ _ = undefined
 
 distribution :: AllStates -> HashMap State (HashMap Symbol Double)
 distribution allstates = HM.fromList $ map toprobs freq
@@ -21,8 +20,8 @@ distribution allstates = HM.fromList $ map toprobs freq
     freq :: [(State, HashMap Symbol Integer)]
     freq = HM.toList (frequency allstates)
 
-    fsum :: [(State, Double)]
-    fsum = map (identity *** fromIntegral . sum . HM.elems) freq
+    -- fsum :: [(State, Double)]
+    -- fsum = map (identity *** fromIntegral . sum . HM.elems) freq
 
     toprobs :: (State, HashMap Symbol Integer) -> (State, HashMap Symbol Double)
     toprobs (s, hms) = (s, HM.map ((/ (fromIntegral . sum . HM.elems $ hms)) . fromIntegral) hms)

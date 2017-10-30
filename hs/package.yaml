@@ -9,7 +9,7 @@ github:      stites/CSSR
 license:     BSD3
 copyright:   2016-2017
 
-ghc-options: -fno-warn-name-shadowing
+ghc-options: -fno-warn-name-shadowing -Wall
 
 default-extensions:
   - MultiParamTypeClasses
@@ -22,27 +22,28 @@ default-extensions:
 
 dependencies:
   - base
-  - bytestring
-  - containers
-  - deepseq
-  - hashable
-  - scientific
-
-  - statistics < 0.14  # API for KS-tests changes in 0.14+
-  - text
-  - unordered-containers
-  - vector
-  - microlens-platform
-  - microlens
-  - hashtables
-  - primitive
-
-  # for graphviz
-  - graphviz
-  - directory  >= 1.2.3.0 # needed for System.Directory.canonicalizePath
 
 library:
   source-dirs: src
+  dependencies:
+    - containers
+    - deepseq
+    - hashable
+
+    - statistics < 0.14  # API for KS-tests changes in 0.14+
+    - text
+    - unordered-containers
+    - vector
+    - vector-instances
+    - microlens-platform
+    - microlens
+    - hashtables
+    - primitive
+
+    # for graphviz
+    - graphviz
+    - directory  >= 1.2.3.0 # needed for System.Directory.canonicalizePath
+
 
 executables:
   cssr:
@@ -53,19 +54,14 @@ executables:
       - optparse-applicative
 
 tests:
+
   spec:
+    ghc-options: -Wno-unused-top-binds # so that we can run per-module main functions
     source-dirs: test
     main: Spec.hs
     dependencies:
       - cssr
       - hspec
-      - QuickCheck
-
-  doctest:
-    main: doctest.hs
-    dependencies:
-      - cssr
-      - doctest
       - QuickCheck
 
 benchmarks:
