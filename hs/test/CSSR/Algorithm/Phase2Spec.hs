@@ -111,6 +111,6 @@ spec =
         bod2obs = map (view Cond.lobsL) . HS.toList . L.histories
 
       predicate :: [Double] -> [Event] -> (Vector Double, [Vector Event], [Event]) -> Bool
-      predicate d0 cs0 (d1, _, cs1) = isApprox 0.05 (V.fromList d0) d1 && all (`elem` cs1) cs0
+      predicate d0 cs0 (d1, _, cs1) = isApprox 0.05 (V.fromList d0) d1 && (HS.fromList cs0) == (HS.fromList cs1)
 
 

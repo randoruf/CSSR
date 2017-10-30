@@ -38,8 +38,9 @@ isHomogeneousM
   -> (parent, Vector Integer)
   -> m Bool
 isHomogeneousM getChildDists sig (parent, pdist) =
-  all ((== Significant) . Prob.matchesFreqs sig pdist)
-  <$> getChildDists parent
+  all (Prob.isSameDist' sig pdist)
+  <$> ((\s -> trace (show ((fmap f'4 . Prob.freqToDist) <$> s, fmap f'4 (Prob.freqToDist pdist), Prob.isSameDist' sig pdist <$> s)) (pure s)) =<< getChildDists parent)
+  where
 
 
 navigate :: forall lf . (lf -> Event -> Maybe lf) -> lf -> Vector Event -> Maybe lf
@@ -109,9 +110,9 @@ excisableM getParent getFrequency sig l = do
     go _     [] = pure Nothing
     go f (a:as) = do
       af <- getFrequency a
-      case Prob.matchesFreqsAsDists sig f af of
-        Significant    -> pure (Just a)
-        NotSignificant -> go f as
+      case Prob.isSameDist' sig f af of
+        True    -> pure (Just a)
+        False -> go f as
 
 showLeaf
   :: (l -> (Bool, [Vector Event]))
