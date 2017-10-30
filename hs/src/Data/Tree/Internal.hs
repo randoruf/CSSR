@@ -38,8 +38,7 @@ isHomogeneousM
   -> (parent, Vector Integer)
   -> m Bool
 isHomogeneousM getChildDists sig (parent, pdist) =
-  all (Prob.isSameDist' sig pdist)
-  <$> ((\s -> trace (show ((fmap f'4 . Prob.freqToDist) <$> s, fmap f'4 (Prob.freqToDist pdist), Prob.isSameDist' sig pdist <$> s)) (pure s)) =<< getChildDists parent)
+  all (Prob.isSameDist' sig pdist) <$> getChildDists parent
 
 
 navigate :: forall lf . (lf -> Event -> Maybe lf) -> lf -> Vector Event -> Maybe lf
