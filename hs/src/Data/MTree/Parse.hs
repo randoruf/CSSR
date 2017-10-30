@@ -98,7 +98,7 @@ foldObs
   -- drop the empty list
   . V.tail
   -- continuously snoc on elements in a scan: [c, b, a] -> [[], [c], [b, c], [a, b, c]]
-  . V.scanl' (\s x -> V.cons x s) mempty
+  . V.scanl' (flip V.cons) mempty
   -- add each observation in from the least dependent to most dependent: [a, b, c] -> [c, b, a]
   . V.reverse
 

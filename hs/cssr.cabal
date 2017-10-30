@@ -47,7 +47,6 @@ library
       CSSR.Algorithm.Phase1
       CSSR.Algorithm.Phase2
       CSSR.Algorithm.Phase3
-      CSSR.Algorithm.Utils
       CSSR.AllStates
       CSSR.Inferred
       CSSR.Prelude

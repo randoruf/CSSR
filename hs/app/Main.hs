@@ -10,9 +10,6 @@ main :: IO ()
 main = execParser opts >>= runCssr
 
 runCssr :: Arguments -> IO ()
-runCssr Arguments{..} =
-  if out
-  then undefined
-  else undefined
+runCssr Arguments{..} = undefined
 
 

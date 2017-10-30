@@ -108,9 +108,9 @@ excisableM getParent getFrequency sig l = do
     go _     [] = pure Nothing
     go f (a:as) = do
       af <- getFrequency a
-      case Prob.isSameDist' sig f af of
-        True  -> pure (Just a)
-        False -> go f as
+      if Prob.isSameDist' sig f af
+      then pure (Just a)
+      else go f as
 
 showLeaf
   :: (l -> (Bool, [Vector Event]))

@@ -1,7 +1,6 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE LambdaCase #-}
 module Data.MTree.Looping where
 
 import CSSR.Prelude.Mutable
@@ -209,15 +208,7 @@ isHomogeneous sig ll = do
     childDists = (fmap.fmap) Prob.frequency . childHistories
 
 excisable :: forall s . Double -> MLeaf s -> ST s (Maybe (MLeaf s))
-excisable sig ll = do
-  -- hs <- readSTRef (histories ll)
-  -- traceM $ "current: " <> Cond.showAllObs (HS.toList hs)
-  -- traceM $ "distribution: " <> Cond.showAllDists (HS.toList hs)
-  -- as <- getAncestors ll
-  -- ahs <- mapM (readSTRef . histories) as
-  -- traceM $ "ancestors: " <> show (map (Cond.showAllObs . HS.toList) ahs)
-  -- traceM $ "distribtions: " <> show (map (Cond.showAllDists . HS.toList) ahs)
-  I.excisableM (readSTRef . parent) (readSTRef . frequency) sig ll
+excisable sig ll = I.excisableM (readSTRef . parent) (readSTRef . frequency) sig ll
 
 getAncestors :: MLeaf s -> ST s [MLeaf s]
 getAncestors = I.getAncestorsM (readSTRef . parent)

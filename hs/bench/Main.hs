@@ -1,4 +1,3 @@
-{-# LANGUAGE StandaloneDeriving #-}
 module Main where
 
 import Criterion (Benchmark)

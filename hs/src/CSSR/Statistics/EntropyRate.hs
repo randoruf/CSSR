@@ -12,7 +12,7 @@ distribution = undefined
 
 entropyRate :: TransitionMap -> Double
 entropyRate ts =
-  (-1) * sum (fmap go $ HM.keys ts)
+  (-1) * sum (go <$> HM.keys ts)
   where
     go :: State -> Double
     go s = foldl' go' 0 (HM.toList $ distribution s)

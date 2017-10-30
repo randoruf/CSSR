@@ -7,7 +7,7 @@ import qualified Data.HashMap.Strict as HM
 type State = ()
 type Symbol = Text
 
-type AllStates = HashMap State (HashMap Symbol (State))
+type AllStates = HashMap State (HashMap Symbol State)
 
 frequency :: AllStates -> HashMap State (HashMap Symbol Integer)
 frequency allstates = HM.mapWithKey ssize allstates

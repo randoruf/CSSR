@@ -38,7 +38,7 @@ relativeEntropy dist adjustedDataSize =
         --     val logRatio = math.log(inferredProb / observedProb) // note that math.log in scala is the natural log
         --     val cacheRE = incrementalRelEnt + inferredProb * logRatio
         GT -> incrementalRelEnt + discreteEntropy observedProb inferredProb
-        _  -> trace ("NO AGGREGATION! dataProb: " <> show observedProb) $ incrementalRelEnt
+        _  -> trace ("NO AGGREGATION! dataProb: " <> show observedProb) incrementalRelEnt
       where
         observedProb :: Double
         observedProb = (fromIntegral . sum $ view Cond.lfrequencyL leaf) / adjustedDataSize
