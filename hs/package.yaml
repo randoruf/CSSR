@@ -9,7 +9,7 @@ github:      stites/CSSR
 license:     BSD3
 copyright:   2016-2017
 
-ghc-options: -fno-warn-name-shadowing -Wall
+ghc-options: -Wall -Wincomplete-record-updates -Wincomplete-uni-patterns
 
 default-extensions:
   - MultiParamTypeClasses
