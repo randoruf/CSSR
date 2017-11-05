@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -Wno-unused-matches #-} -- FIXME: remove when this has no undefined values
 module CSSR.Inferred where
 
 import CSSR.Prelude

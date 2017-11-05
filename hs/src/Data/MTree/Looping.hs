@@ -44,11 +44,11 @@ instance Eq (MLeaf s) where
     && terminalReference a == terminalReference b
     && hasEdgeset a == hasEdgeset b
 
-setTermRef :: MLeaf s -> Terminal s -> ST s ()
+setTermRef :: MLeaf s -> MTerminal s -> ST s ()
 setTermRef leaf t = modifySTRef (terminalReference leaf) (const $ Just t)
 
 
-getTermRef :: MLeaf s -> ST s (Maybe (Terminal s))
+getTermRef :: MLeaf s -> ST s (Maybe (MTerminal s))
 getTermRef = readSTRef . terminalReference
 
 
@@ -79,15 +79,15 @@ addHistories leaf hs = do
 
 
 type Loop s = MLeaf s
-type Terminal s = MLeaf s
+type MTerminal s = MLeaf s
 type MLNode s = Either (Loop s) (MLeaf s)
 
 data MTree s = MTree
-  { terminals :: STRef s (ListSet (Terminal s))
+  { terminals :: STRef s (ListSet (MTerminal s))
   , root :: MLeaf s
   }
 
-addTerminal :: MTree s -> Terminal s -> ST s ()
+addTerminal :: MTree s -> MTerminal s -> ST s ()
 addTerminal tree term = modifySTRef (terminals tree) (S.insert term)
 
 freezeTree :: forall s . MTree s -> ST s L.Tree

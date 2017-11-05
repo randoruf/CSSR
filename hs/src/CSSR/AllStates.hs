@@ -2,9 +2,9 @@ module CSSR.AllStates where
 
 import CSSR.Prelude
 import qualified Data.HashMap.Strict as HM
+import qualified Data.Tree.Looping as L
 
-type State = ()
-type Symbol = Text
+type State = L.Leaf
 
 type AllStates = HashMap State (HashMap Symbol State)
 
@@ -36,3 +36,4 @@ distribution allstates = HM.fromList $ map toprobs freq
 --   val frequency:DenseVector[Double]    = new DenseVector[Double](stateIndexes.map{_.size.toDouble})
 --   val distribution:DenseVector[Double] = frequency :/ sum(frequency)
 -- }
+

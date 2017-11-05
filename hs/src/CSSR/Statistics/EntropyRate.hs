@@ -6,7 +6,6 @@ import qualified Data.HashMap.Strict as HM
 
 type TransitionMap = HashMap State (HashMap Event (Maybe State))
 type State = ()
-type Symbol = Text
 
 distribution :: State -> HashMap Symbol Double
 distribution = undefined

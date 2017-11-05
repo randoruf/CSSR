@@ -24,8 +24,10 @@ module CSSR.Prelude
   , Locations
   , Idx
   , Event
+  , Symbol
   , Delim
   , DataFileContents
+  , mapHashKeys
   ) where
 
 import Control.Arrow       as X
@@ -97,7 +99,10 @@ head = unsafeHead `saferBy` null
 
 type Locations = HashMap Idx Integer
 type Idx = Integer
+
 type Event = Text
+type Symbol = Event
+
 type Delim = Text
 type DataFileContents = Vector Event
 type GVector = GV.Vector
@@ -124,4 +129,8 @@ log2 = logBase 2
 
 discreteEntropy :: Floating f => f -> f -> f
 discreteEntropy a b = a * log2 (a / b)
+
+
+mapHashKeys :: (Hashable k, Eq k) => (k -> v1) -> HashMap k v0 -> HashMap k v1
+mapHashKeys f = HM.mapWithKey (\v _ -> f v)
 

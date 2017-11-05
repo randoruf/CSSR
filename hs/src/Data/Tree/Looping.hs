@@ -13,6 +13,7 @@ import qualified Data.Tree.Conditional as Cond (Leaf, lobsL, showAllObs)
 import qualified Data.Tree.Internal as I (showLeaf) -- , excisableM)
 import qualified CSSR.Probabilistic as Prob (freqToDist)
 
+type Terminal = Leaf
 
 data Leaf = Leaf
   { body      :: Either LeafRep LeafBody

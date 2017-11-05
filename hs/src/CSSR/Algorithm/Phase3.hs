@@ -52,6 +52,7 @@ import Data.Alphabet
 import CSSR.Prelude.Mutable
 import CSSR.Probabilistic
 
+import Data.MTree.Looping (MTerminal)
 import qualified Data.MTree.Looping as L
 import qualified Data.Tree.Conditional as Cond
 
@@ -61,12 +62,10 @@ import qualified Data.HashSet as HS
 import qualified Data.Vector as V
 
 
-
-type Terminal = L.MLeaf
-type Transitions s = ListSet (Terminal s, ListSet (L.MLNode s))
+type Transitions s = ListSet (MTerminal s, ListSet (L.MLNode s))
 
 
-stepFromTerminal :: forall s . Alphabet -> L.MTree s -> Terminal s -> ST s [Maybe (L.MLNode s)]
+stepFromTerminal :: forall s . Alphabet -> L.MTree s -> MTerminal s -> ST s [Maybe (L.MLNode s)]
 stepFromTerminal alpha (L.root->rt) term = do
   dist <- toList . freqToDist <$> readSTRef (L.frequency term)
   foldrM go [] $ zip [0..] dist
@@ -94,7 +93,7 @@ stepFromTerminal alpha (L.root->rt) term = do
 toCheck :: forall s . Alphabet -> L.MTree s -> ST s [(L.MLeaf s, L.MLNode s)]
 toCheck a tree = terminals tree >>= foldrM go mempty
   where
-    go :: Terminal s -> [(Terminal s, L.MLNode s)] -> ST s [(Terminal s, L.MLNode s)]
+    go :: MTerminal s -> [(MTerminal s, L.MLNode s)] -> ST s [(MTerminal s, L.MLNode s)]
     go t memo
       = (memo <>)  -- add to the current list of teminals to check
       . fmap (t,)  -- make sure transitions are paired with their origin terminal
@@ -134,12 +133,12 @@ refine a tree = do
   (stillDirty, transitions) <- foldrM (go ts) (False, mempty) check
   when stillDirty (refine a tree)
   where
-    inTerminals :: L.MLNode s -> ListSet (Terminal s) -> Bool
+    inTerminals :: L.MLNode s -> ListSet (MTerminal s) -> Bool
     inTerminals = S.member . either identity identity
 
     -- IF wa leads to a terminal node
     -- THEN store terminal's transition in transition map
-    storeTransitions :: ListSet (Terminal s) -> Bool -> Transitions s -> Terminal s -> L.MLeaf s -> ST s (Bool, Transitions s)
+    storeTransitions :: ListSet (MTerminal s) -> Bool -> Transitions s -> MTerminal s -> L.MLeaf s -> ST s (Bool, Transitions s)
     storeTransitions ts isDirty tmap term subtree = L.getTermRef subtree
       >>= \case
         Just _  -> pure (isDirty, tmap)
@@ -148,14 +147,14 @@ refine a tree = do
           pure (True, tmap)
 
     -- terminal nodes cannot be overwritten
-    runRefinement :: ListSet (Terminal s) -> Terminal s -> L.MLeaf s -> ST s ()
+    runRefinement :: ListSet (MTerminal s) -> MTerminal s -> L.MLeaf s -> ST s ()
     runRefinement ts term step
       = mapM_ (`L.setTermRef` term)
       . filter (not . (`S.member` ts))
       . S.toList
       $ collectLeaves tree step
 
-    go :: ListSet (Terminal s) -> (Terminal s, L.MLNode s) -> (Bool, Transitions s) -> ST s (Bool, Transitions s)
+    go :: ListSet (MTerminal s) -> (MTerminal s, L.MLNode s) -> (Bool, Transitions s) -> ST s (Bool, Transitions s)
     go ts (term, step) (dirt, transitions)
       | step `inTerminals` ts = pure (dirt, S.insertAssocWith (\new old -> old) term (S.singleton step) transitions)
       | otherwise             = either (storeTransitions ts dirt transitions term) refineSubtree step
