@@ -96,7 +96,7 @@ spec =
 
       tocheckable :: L.Leaf -> Either (Vector Event) (Vector Double, [Vector Event], [Event])
       tocheckable l = case L.body l of
-        Left (L.LeafRep os) -> Left os
+        Left  _   -> Left mempty
         Right bod -> Right (bod2dist bod, bod2obs bod, HM.keys (L.children bod))
        where
         bod2dist :: L.LeafBody -> Vector Double

@@ -15,25 +15,85 @@ import qualified CSSR.Probabilistic as Prob (freqToDist)
 type Terminal = Leaf
 
 data Leaf = Leaf
-  { body      :: Either LeafRep LeafBody
-  , parent    :: Maybe Leaf
+  { path   :: Vector Event
+  , body   :: Either (Either (Vector Event) {-super hack to freeze-} Leaf) LeafBody
+  , parent :: Maybe Leaf
   } deriving (Generic, NFData)
 
-bodyL :: Lens' Leaf (Either LeafRep LeafBody)
+
+defLeaf :: Vector Event -> LeafBody -> Leaf
+defLeaf a b = Leaf a (Right b) Nothing
+
+mkLeaf :: Vector Event -> LeafBody -> Maybe Leaf -> Leaf
+mkLeaf a b c = Leaf a (Right b) c
+
+defLoop :: Vector Event -> Leaf -> Leaf
+defLoop a b = Leaf a (Left (Right b)) Nothing
+
+defUninitializedLoop :: Vector Event -> Vector Event -> Leaf
+defUninitializedLoop a b = Leaf a (Left (Left b)) Nothing
+
+
+instance Show Leaf where
+  show l = I.showLeaf toConds toFreqs toChilds "Looping" (path l) l
+    where
+      toConds :: Leaf -> (Bool, [Vector Event])
+      toConds l =
+        case body l of
+          Left  lp -> (True, [either (const mempty) path lp])
+          Right bd -> (False, view Cond.lobsL <$> toList (histories bd))
+
+      toFreqs :: Leaf -> [Vector Integer]
+      toFreqs = either (const []) ((:[]) . view frequencyL) . body
+
+      toChilds :: Leaf -> [(Event, Leaf)]
+      toChilds l = either (const []) (HM.toList . view childrenL) (body l)
+
+instance Hashable Leaf where
+  hashWithSalt salt l = hashWithSalt salt (mapMaybe pToHashable ps)
+   where
+    ps :: [Leaf]
+    ps = I.getAncestors parent l
+
+    pToHashable :: Leaf -> Maybe (HashSet Cond.Leaf, Vector Integer)
+    pToHashable = fmap (histories &&& frequency) . preview (bodyL . _Right)
+
+instance Eq Leaf where
+  l0 == l1 =
+    -- path is our primary identifier
+    path l0 == path l1
+
+    -- compare NON-LOOPING components of bodies
+    && preview (bodyL . _Right) l0 == preview (bodyL . _Right) l1
+
+    -- probably not required, but if we wind up comparing loops, go up the chain
+    && parent l0 == parent l1
+
+
+bodyL :: Lens' Leaf (Either (Either (Vector Event) Leaf) LeafBody)
 bodyL = lens body $ \l b -> l { body = b }
 
-newtype LeafRep = LeafRep
-  { path :: Vector Event
-  } deriving (Show, Eq, Generic, NFData)
-
-pathL :: Lens' LeafRep (Vector Event)
+pathL :: Lens' Leaf (Vector Event)
 pathL = lens path $ \b f -> b { path = f }
+
+parentL :: Lens' Leaf (Maybe Leaf)
+parentL = lens parent $ \b f -> b { parent = f }
+
+data LeafRep = LeafRep deriving (Show, Eq, Generic, NFData)
+
+instance Hashable LeafRep
 
 data LeafBody = LeafBody
   { histories :: HashSet Cond.Leaf
   , frequency :: Vector Integer
   , children  :: HashMap Event Leaf
   } deriving (Eq, Generic, NFData)
+
+instance Hashable LeafBody
+
+instance Show LeafBody where
+  show (LeafBody h f c) =
+    "hists: " ++ Cond.showAllObs (toList h) ++ ", freq: " ++ show f
 
 historiesL :: Lens' LeafBody (HashSet Cond.Leaf)
 historiesL = lens histories $ \b f -> b { histories = f }
@@ -44,8 +104,6 @@ frequencyL = lens frequency $ \b f -> b { frequency = f }
 childrenL :: Lens' LeafBody (HashMap Event Leaf)
 childrenL = lens children $ \l x -> l { children = x }
 
-lbodypath :: LeafBody -> Vector Event
-lbodypath b = view Cond.lobsL $ unsafeHead (histories b)
 
 data Tree = Tree
   { terminals :: HashSet Leaf
@@ -58,8 +116,10 @@ terminalsL = lens terminals $ \b f -> b { terminals = f }
 rootL :: Lens' Tree Leaf
 rootL = lens root $ \b f -> b { root = f }
 
-instance Eq Leaf where
-  (Leaf b0 c0 _) == (Leaf b1 c1 _) = b0 == b1 && c0 == c1
+ancestors :: Leaf -> [Leaf]
+ancestors l = trace (show (path l) ++ " ancestors: " ++ show (fmap path p)) p
+  where p = I.getAncestors parent l
+
 
 instance Show Tree where
   show (Tree ts rt)
@@ -74,50 +134,20 @@ instance Show Tree where
       ]
    where
     showTerm :: Leaf -> String
-    showTerm (Leaf b _) =
-      case b of
-        Right b -> strLeaf (toList (histories b)) (frequency b)
-        Left  l -> strLoop l
-      where
-        strLoop p       = "Leaf{Loop(" ++ show p ++ ")}"
-        strLeaf hs fs = "Leaf{"      ++ Cond.showAllObs hs ++ ", " ++ show (Prob.freqToDist fs :: Vector Double) ++ "}"
+    showTerm l =
+      case body l of
+        Right b -> strLeaf l (toList (histories b)) (frequency b)
+        Left lp -> strLoop (either undefined identity lp)
 
-instance Show Leaf where
-  show l = I.showLeaf toConds toFreqs toChilds "Looping" (toRepr l) l
-    where
-      toConds :: Leaf -> (Bool, [Vector Event])
-      toConds l =
-        case body l of
-          Left  (LeafRep p) -> (True, [p])
-          Right (LeafBody hs _ _) -> (False, view Cond.lobsL <$> toList hs)
+    strLoop :: Leaf -> String
+    strLoop p     = "Leaf{Loop(" ++ show (path p) ++ ")}"
 
-      toFreqs :: Leaf -> [Vector Integer]
-      toFreqs = either (const []) ((:[]) . view frequencyL) . body
-
-      toChilds :: Leaf -> [(Event, Leaf)]
-      toChilds (Leaf (Left _) _) = []
-      toChilds (Leaf (Right b) _) = HM.toList (view childrenL b)
-
-      toRepr :: Leaf -> Vector Event
-      toRepr = either path (fromMaybe mempty . head . toHObs) . body
-        where
-          toHObs :: LeafBody -> [Vector Event]
-          toHObs = fmap (view Cond.lobsL) . toList . histories
-
-instance Show LeafBody where
-  show (LeafBody h f c) =
-    "hists: " ++ Cond.showAllObs (toList h) ++ ", freq: " ++ show f
-
-instance Hashable LeafBody
-instance Hashable LeafRep
-instance Hashable Leaf where
-  hashWithSalt salt l = hashWithSalt salt (mapMaybe pToHashable ps)
-   where
-    ps :: [Leaf]
-    ps = I.getAncestors parent l
-
-    pToHashable :: Leaf -> Maybe (HashSet Cond.Leaf, Vector Integer)
-    pToHashable = fmap (histories &&& frequency) . preview (bodyL . _Right)
+    strLeaf :: Leaf -> [Cond.Leaf] -> Vector Integer -> String
+    strLeaf l hs fs = intercalate ", "
+      [ "Leaf{" ++ show (path l)
+      , Cond.showAllObs hs
+      , show (Prob.freqToDist fs) ++ "}"
+      ]
 
 --path :: forall f. Applicative f
 --             => Vector Event

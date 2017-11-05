@@ -142,22 +142,23 @@ showLeafM tohists todists tochilds pre st l = T.unpack <$> go 0 (T.concat $ V.to
     hs <- tohists l
     fs <- todists l
     case cs' of
-      [] -> pure $ showNode d e hs fs <> ", no children}"
+      [] -> pure $ showNode d e hs fs False
       cs -> do
         tcs <- mapM (uncurry $ go (d+1)) cs
         pure . T.concat $
-          [ showNode d e hs fs <> "}\n"
+          [ showNode d e hs fs True <> "\n"
           , indent (d + 1) <> "children:"
           , T.intercalate "\n" tcs
           ]
 
-  showNode :: Int -> Event -> (Bool, [Vector Event]) -> [Vector Integer] -> Text
-  showNode d e (isloop, hs) fs = T.concat
+  showNode :: Int -> Event -> (Bool, [Vector Event]) -> [Vector Integer] -> Bool -> Text
+  showNode d e (isloop, hs) fs hasCs = T.concat
     [ "\n", indent d
     , T.pack (show e), "->", pre <> "Leaf{"
     , if isloop then "Loop(" else "", "obs: ", showList T.concat hs, if isloop then ")" else ""
     , if isloop then ""      else ", freq: " <> showList (num2txt show) fs
     , if isloop then ""      else ", dist: " <> showList (num2txt f'4) (fmap Prob.freqToDist fs)
+    , if isloop || hasCs then "}" else ", no children}"
     ]
 
   showList :: ([a] -> Text) -> [Vector a] -> Text

@@ -1,10 +1,11 @@
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Data.MTree.Looping where
 
 import CSSR.Prelude.Mutable
-import Data.Alphabet
 
 import qualified CSSR.Probabilistic  as Prob
 import qualified Data.Tree.Conditional as Cond
@@ -17,9 +18,13 @@ import qualified Data.HashMap.Strict       as HM
 import qualified Data.Vector               as V
 import qualified Data.HashTable.ST.Cuckoo  as C
 import qualified Data.HashTable.Class      as H
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
+
 import Data.List.Set (ListSet(..))
 import qualified Data.List.Set as S
 
+type LLeaf = L.Leaf
 
 -------------------------------------------------------------------------------
 -- Mutable Looping Tree ADTs
@@ -27,22 +32,25 @@ import qualified Data.List.Set as S
 type HashTableSet s a = C.HashTable s a Bool
 
 data MLeaf s = MLeaf
+  { path :: !(Vector Event)
   -- for lack of a mutable hash set implementation
-  { histories :: STRef s (HashSet Cond.Leaf)
-  , frequency :: STRef s (Vector Integer)
-  , children :: C.HashTable s Event (MLNode s)
-  , parent :: STRef s (Maybe (MLeaf s))
-  , terminalReference :: STRef s (Maybe (MLeaf s))
-  , hasEdgeset :: STRef s Bool
+  , histories :: !(STRef s (HashSet Cond.Leaf))
+  , frequency :: !(STRef s (Vector Integer))
+  , children :: !(C.HashTable s Event (MLNode s))
+  , parent :: !(STRef s (Maybe (MLeaf s)))
+  , terminalReference :: !(STRef s (Maybe (MLeaf s)))
+  , hasEdgeset :: !(STRef s Bool)
   }
 
 instance Eq (MLeaf s) where
   a == b
-    = histories a == histories b
+    = path a == path b
+    && histories a == histories b
     && frequency a == frequency b
     && parent a == parent b
     && terminalReference a == terminalReference b
     && hasEdgeset a == hasEdgeset b
+
 
 setTermRef :: MLeaf s -> MTerminal s -> ST s ()
 setTermRef leaf t = modifySTRef (terminalReference leaf) (const $ Just t)
@@ -78,9 +86,22 @@ addHistories leaf hs = do
       else V.zipWith (+) a b
 
 
-type Loop s = MLeaf s
+toNodeList :: MLeaf s -> ST s [MLNode s]
+toNodeList l = go [] [Left l]
+ where
+  go :: [MLNode s] -> [MLNode s] -> ST s [MLNode s]
+  go ret [] = pure ret
+  go ret ps = do
+    cs <- foldMapM (H.toList . children) (rights ps)
+    go (ret <> ps) (map snd cs)
+
+  foldMapM :: (Monoid m, Foldable t, Monad st) => (a -> st m) -> t a -> st m
+  foldMapM f = foldrM (\a m -> (<> m) <$> f a) mempty
+
+
+type MLoop s = MLeaf s
 type MTerminal s = MLeaf s
-type MLNode s = Either (Loop s) (MLeaf s)
+type MLNode s = Either (MLoop s) (MLeaf s)
 
 data MTree s = MTree
   { terminals :: STRef s (ListSet (MTerminal s))
@@ -96,51 +117,60 @@ freezeTree tree = L.Tree
   <*> freeze (root tree)
   where
     freezeTerms :: ListSet (MLeaf s) -> ST s (HashSet L.Leaf)
-    freezeTerms = fmap HS.fromList . mapM freeze . S.toList
-
+    freezeTerms _ = pure mempty -- undefined -- fmap HS.fromList . mapM freezeLeaf . S.toList
 
 freeze :: forall s . MLeaf s -> ST s L.Leaf
 freeze ml = do
-  f <- readSTRef (frequency ml)
-  cs <- freezeDown =<< (H.toList . children $ ml)
-  hs <- readSTRef (histories ml)
+  ll <- freezeOne ml
+  pure ll
 
-  let rt = L.Leaf (Right (L.LeafBody hs f cs)) Nothing
-  return $ withChilds rt (HM.map (withParent (Just rt)) cs)
+ where
+  freezeOne :: MLeaf s -> ST s L.Leaf
+  freezeOne ml = do
+    traceM $ "freezing: " ++ show (path ml)
+    f  <- readSTRef (frequency ml)
+    cs <- freezeDown ml =<< (H.toList . children) ml
+    hs <- readSTRef (histories ml)
+    let cur = L.defLeaf (path ml) (L.LeafBody hs f cs)
+        cur'= cur & setChildren .~ HM.map (set L.parentL (Just cur)) cs
+    pure cur'
 
-  where
-    withChilds :: L.Leaf -> HashMap Event L.Leaf -> L.Leaf
-    withChilds (L.Leaf (Left  _) p) _ = impossible "a loop can't have children"
-    withChilds (L.Leaf (Right b) p) cs = L.Leaf (Right (b & L.childrenL .~ cs)) p
+  setChildren :: ASetter' LLeaf (HashMap Event LLeaf)
+  setChildren = L.bodyL . _Right . L.childrenL
 
-    withParent :: Maybe L.Leaf -> L.Leaf -> L.Leaf
-    withParent p (L.Leaf bod _) = L.Leaf bod p
+  freezeDown :: MLeaf s -> [(Event, MLNode s)] -> ST s (HashMap Event L.Leaf)
+  freezeDown (path->p) cs = HM.fromList . catMaybes <$> mapM icer cs
+    where
+      icer :: (Event, MLNode s) -> ST s (Maybe (Event, L.Leaf))
+      icer (e, Right nxt) = Just . (e,) <$> freeze nxt
+      icer (e, Left  lp)  = trace ("loop! " <> show p <> "->" <> show e <> " == " <> show (path lp)) $
+        Just . (e,) <$> pure (L.defUninitializedLoop (p `V.snoc` e) (path lp))
 
-    freezeDown :: [(Event, MLNode s)] -> ST s (HashMap Event L.Leaf)
-    freezeDown cs = HM.fromList . catMaybes <$> mapM icer cs
-      where
-        icer :: (Event, MLNode s) -> ST s (Maybe (Event, L.Leaf))
-        icer (e, Right lp) = Just . (e,) <$> freeze lp
-        icer (e, Left lp) = do
-          hs <- minimum . fmap (Cond.obs . Cond.body) . HS.toList <$> readSTRef (histories lp)
-          case hs of
-            Nothing -> impossible "all leaves have at least one history (TODO: move to NonEmptySet)"
-            Just h  -> pure $ Just (e, L.Leaf (Left $ L.LeafRep h) Nothing)
+  initLoops :: LLeaf -> HashMap Event LLeaf -> HashMap Event LLeaf
+  initLoops p = HM.mapWithKey (\e c -> either (go e c) (const c) (L.body c))
+   where
+    go :: Event -> LLeaf -> Either (Vector Event) LLeaf -> LLeaf
+    go _ c (Right _) = c
+    go e c (Left up) = trace (show (map L.path (L.ancestors c))) $
+      fromMaybe (impossible "bad loop") $
+      head $ filter ((== (L.path p `V.snoc` e)) . L.path) (L.ancestors c)
 
 
-
-mkLeaf :: Maybe (MLeaf s) -> [Cond.Leaf] -> ST s (MLeaf s)
-mkLeaf p hs = MLeaf
+mkLeaf :: Maybe (MLeaf s) -> Event -> [Cond.Leaf] -> ST s (MLeaf s)
+mkLeaf p e hs = MLeaf lpath
   <$> newSTRef (HS.fromList hs)
   <*> newSTRef (foldr1 Prob.addFrequencies $ fmap (view (Cond.bodyL . Cond.frequencyL)) hs)
   <*> H.new
   <*> newSTRef p
   <*> newSTRef Nothing
   <*> newSTRef False
+ where
+  lpath :: Vector Event
+  lpath = maybe mempty path p `V.snoc` e
 
 
-mkRoot :: Alphabet -> Cond.Leaf -> ST s (MLeaf s)
-mkRoot _ hrt = MLeaf
+mkRoot :: Cond.Leaf -> ST s (MLeaf s)
+mkRoot hrt = MLeaf mempty
   <$> newSTRef (HS.fromList [hrt])
   <*> newSTRef (view (Cond.bodyL . Cond.frequencyL) hrt)
   <*> H.new
