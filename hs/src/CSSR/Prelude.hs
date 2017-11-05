@@ -13,7 +13,6 @@ module CSSR.Prelude
   , impossible
   , prettyDecimal
   , f'4
-  , (>$>)
   , saferBy
   , CSSR.Prelude.head
   , log2
@@ -117,9 +116,6 @@ prettyDecimal p f = showFFloat (Just p) f ""
 
 f'4 :: RealFloat a => a -> String
 f'4 = prettyDecimal 4
-
-(>$>) :: Monad m => (b -> m c) -> (a, b) -> m (a, c)
-(>$>) f (a, b) = (a,) <$> f b
 
 saferBy :: (a -> b) -> (a -> Bool) -> a -> Maybe b
 saferBy get isbad a = if isbad a then Nothing else Just (get a)

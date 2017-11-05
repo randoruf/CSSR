@@ -21,6 +21,7 @@
 -------------------------------------------------------------------------------
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TupleSections #-}
 module CSSR.Algorithm.Phase2 where
 
 import qualified Data.Sequence as S
@@ -36,7 +37,7 @@ import qualified Data.Tree.Conditional as Cond
 
 grow :: forall s . Double -> Cond.Tree -> ST s (ML.MTree s)
 grow sig (Cond.Tree _ a hRoot) = do
-  rt <- ML.mkRoot a hRoot              -- INIT root looping node
+  rt <- ML.mkRoot hRoot                -- INIT root looping node
   ts <- newSTRef $ fromList [rt]       -- INIT queue of active, unchecked nodes
   let q = S.singleton rt               -- QUEUE root
   findTerminals sig q ts
@@ -71,7 +72,7 @@ findTerminals sig q termsRef =
         findTerminals sig (next <> S.fromList cs'') termsRef
   where
     childsToLoops :: MLeaf s -> ST s [(Event, MLNode s)]
-    childsToLoops = nextChilds >=> mapM (findLoops >$>)
+    childsToLoops = nextChilds >=> mapM (\(e,c) -> (e,) <$> findLoops c)
 
     splitTerminals :: Seq (MLeaf s) -> (MLeaf s, Seq (MLeaf s))
     splitTerminals = ((`S.index` 0) *** identity) . S.splitAt 1
@@ -88,7 +89,7 @@ nextChilds :: forall s . MLeaf s -> ST s [(Event, MLeaf s)]
 nextChilds active = (ML.childHistories >=> mapM activeAsLeaf . groupHistory) active
   where
     activeAsLeaf :: (Event, [Cond.Leaf]) -> ST s (Event, MLeaf s)
-    activeAsLeaf s = ML.mkLeaf (Just active) >$> s
+    activeAsLeaf (e, hs) = (e,) <$> ML.mkLeaf (Just active) e hs
 
     groupHistory :: [Cond.Leaf] -> [(Event, [Cond.Leaf])]
     groupHistory = groupBy (fromMaybe "" . V.head . view (Cond.bodyL . Cond.obsL))
