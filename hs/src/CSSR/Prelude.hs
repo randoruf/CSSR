@@ -39,7 +39,7 @@ import Data.Foldable       as X hiding (minimumBy, minimum)
 import Data.Function       as X (on)
 import Data.List           as X (intercalate, nub, (\\), sort, sortBy, delete)
 import Data.List.NonEmpty  as X (NonEmpty(..))
-import Data.Maybe          as X (catMaybes, fromMaybe, maybe)
+import Data.Maybe          as X (catMaybes, fromMaybe, maybe, mapMaybe)
 import Data.Monoid         as X
 import Data.Hashable       as X
 import Data.HashMap.Strict as X (HashMap)

@@ -50,7 +50,6 @@ navigateM lookup rt (V.toList -> history)
   | null history = pure (Just rt)
   | otherwise    = go history rt
   where
-    -- FIXME: use MaybeT here
     go :: [Event] -> lf -> m (Maybe lf)
     go [] lf = pure (Just lf)
     go os@(_:_) lf = case splitLast os of

@@ -36,19 +36,19 @@ spec =
       context "its histories" $
         historiesMatchSpec "root" (L.root ltree) [([1/3, 2/3], "")]
 
-    let d1 = maybe [] HM.elems $ preview (L.rootL . L.childrenL) ltree :: [L.Leaf]
+    let d1 = maybe [] HM.elems $ preview (L.rootL . L.bodyL . _Right . L.childrenL) ltree :: [L.Leaf]
     describe "depth 1" $ depthSpec d1
       [ Right ([1/2, 1/2], "0", [])
       , Right ([1/4, 3/4], "1", ["1", "0"])
       ]
 
-    let d2 = foldMap (HM.elems . L.children) d1
+    let d2 = foldMap (either (const mempty) (HM.elems . L.children) . L.body) d1
     describe "depth 2" $ depthSpec d2
       [ Left ""
       , Right ([0, 1], "01", [])
       ]
 
-    let d3 = foldMap (HM.elems . L.children) d2
+    let d3 = foldMap (either (const mempty) (HM.elems . L.children) . L.body) d2
     describe "depth 3" $
       it "should be empty" $ null d3
 
@@ -97,7 +97,7 @@ spec =
       tocheckable :: L.Leaf -> Either (Vector Event) (Vector Double, [Vector Event], [Event])
       tocheckable l = case L.body l of
         Left (L.LeafRep os) -> Left os
-        Right bod -> Right (bod2dist bod, bod2obs bod, HM.keys (L.children l))
+        Right bod -> Right (bod2dist bod, bod2obs bod, HM.keys (L.children bod))
        where
         bod2dist :: L.LeafBody -> Vector Double
         bod2dist =Prob.freqToDist . L.frequency

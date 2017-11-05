@@ -4,28 +4,23 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Data.Tree.Looping where
 
-import qualified Data.HashSet as HS (toList) -- , insert, singleton, delete, foldr)
-import qualified Data.HashMap.Strict as HM (toList)
+import qualified Data.HashMap.Strict as HM (toList, lookup)
 
 import CSSR.Prelude
 
 import qualified Data.Tree.Conditional as Cond (Leaf, lobsL, showAllObs)
-import qualified Data.Tree.Internal as I (showLeaf) -- , excisableM)
+import qualified Data.Tree.Internal as I
 import qualified CSSR.Probabilistic as Prob (freqToDist)
 
 type Terminal = Leaf
 
 data Leaf = Leaf
   { body      :: Either LeafRep LeafBody
-  , children  :: HashMap Event Leaf
   , parent    :: Maybe Leaf
   } deriving (Generic, NFData)
 
 bodyL :: Lens' Leaf (Either LeafRep LeafBody)
 bodyL = lens body $ \l b -> l { body = b }
-
-childrenL :: Lens' Leaf (HashMap Event Leaf)
-childrenL = lens children $ \l x -> l { children = x }
 
 newtype LeafRep = LeafRep
   { path :: Vector Event
@@ -37,6 +32,7 @@ pathL = lens path $ \b f -> b { path = f }
 data LeafBody = LeafBody
   { histories :: HashSet Cond.Leaf
   , frequency :: Vector Integer
+  , children  :: HashMap Event Leaf
   } deriving (Eq, Generic, NFData)
 
 historiesL :: Lens' LeafBody (HashSet Cond.Leaf)
@@ -44,6 +40,12 @@ historiesL = lens histories $ \b f -> b { histories = f }
 
 frequencyL :: Lens' LeafBody (Vector Integer)
 frequencyL = lens frequency $ \b f -> b { frequency = f }
+
+childrenL :: Lens' LeafBody (HashMap Event Leaf)
+childrenL = lens children $ \l x -> l { children = x }
+
+lbodypath :: LeafBody -> Vector Event
+lbodypath b = view Cond.lobsL $ unsafeHead (histories b)
 
 data Tree = Tree
   { terminals :: HashSet Leaf
@@ -65,17 +67,17 @@ instance Show Tree where
       [ [ "Looping.Tree"
         , "terminals:"
         ]
-      , (("\t"<>) . showTerm) <$> HS.toList ts
+      , (("\t"<>) . showTerm) <$> toList ts
       , [ "root:"
         , show rt
         ]
       ]
    where
     showTerm :: Leaf -> String
-    showTerm (Leaf b _ _) =
+    showTerm (Leaf b _) =
       case b of
-        Right (LeafBody hs fs) -> strLeaf (HS.toList hs) fs
-        Left  (LeafRep v) -> strLoop v
+        Right b -> strLeaf (toList (histories b)) (frequency b)
+        Left  l -> strLoop l
       where
         strLoop p       = "Leaf{Loop(" ++ show p ++ ")}"
         strLeaf hs fs = "Leaf{"      ++ Cond.showAllObs hs ++ ", " ++ show (Prob.freqToDist fs :: Vector Double) ++ "}"
@@ -86,29 +88,36 @@ instance Show Leaf where
       toConds :: Leaf -> (Bool, [Vector Event])
       toConds l =
         case body l of
-          Left (LeafRep p) -> (True, [p])
-          Right (LeafBody hs _) -> (False, view Cond.lobsL <$> HS.toList hs)
+          Left  (LeafRep p) -> (True, [p])
+          Right (LeafBody hs _ _) -> (False, view Cond.lobsL <$> toList hs)
 
       toFreqs :: Leaf -> [Vector Integer]
       toFreqs = either (const []) ((:[]) . view frequencyL) . body
 
       toChilds :: Leaf -> [(Event, Leaf)]
-      toChilds = HM.toList . view childrenL
+      toChilds (Leaf (Left _) _) = []
+      toChilds (Leaf (Right b) _) = HM.toList (view childrenL b)
 
       toRepr :: Leaf -> Vector Event
       toRepr = either path (fromMaybe mempty . head . toHObs) . body
         where
           toHObs :: LeafBody -> [Vector Event]
-          toHObs = fmap (view Cond.lobsL) . HS.toList . histories
+          toHObs = fmap (view Cond.lobsL) . toList . histories
 
 instance Show LeafBody where
-  show (LeafBody h f) =
-    "hists: " ++ Cond.showAllObs (HS.toList h) ++ ", freq: " ++ show f
+  show (LeafBody h f c) =
+    "hists: " ++ Cond.showAllObs (toList h) ++ ", freq: " ++ show f
 
 instance Hashable LeafBody
 instance Hashable LeafRep
 instance Hashable Leaf where
-  hashWithSalt salt (Leaf b _ _) = hashWithSalt salt b
+  hashWithSalt salt l = hashWithSalt salt (mapMaybe pToHashable ps)
+   where
+    ps :: [Leaf]
+    ps = I.getAncestors parent l
+
+    pToHashable :: Leaf -> Maybe (HashSet Cond.Leaf, Vector Integer)
+    pToHashable = fmap (histories &&& frequency) . preview (bodyL . _Right)
 
 --path :: forall f. Applicative f
 --             => Vector Event

@@ -105,27 +105,28 @@ freeze ml = do
   cs <- freezeDown =<< (H.toList . children $ ml)
   hs <- readSTRef (histories ml)
 
-  let cur = L.Leaf (Right (L.LeafBody hs f)) cs Nothing
-  return $ withChilds cur (HM.map (withParent (Just cur)) cs)
+  let rt = L.Leaf (Right (L.LeafBody hs f cs)) Nothing
+  return $ withChilds rt (HM.map (withParent (Just rt)) cs)
 
   where
     withChilds :: L.Leaf -> HashMap Event L.Leaf -> L.Leaf
-    withChilds (L.Leaf bod _ p) cs = L.Leaf bod cs p
+    withChilds (L.Leaf (Left  _) p) _ = impossible "a loop can't have children"
+    withChilds (L.Leaf (Right b) p) cs = L.Leaf (Right (b & L.childrenL .~ cs)) p
 
     withParent :: Maybe L.Leaf -> L.Leaf -> L.Leaf
-    withParent p (L.Leaf bod cs _) = L.Leaf bod cs p
+    withParent p (L.Leaf bod _) = L.Leaf bod p
 
     freezeDown :: [(Event, MLNode s)] -> ST s (HashMap Event L.Leaf)
     freezeDown cs = HM.fromList . catMaybes <$> mapM icer cs
       where
         icer :: (Event, MLNode s) -> ST s (Maybe (Event, L.Leaf))
+        icer (e, Right lp) = Just . (e,) <$> freeze lp
         icer (e, Left lp) = do
           hs <- minimum . fmap (Cond.obs . Cond.body) . HS.toList <$> readSTRef (histories lp)
           case hs of
             Nothing -> impossible "all leaves have at least one history (TODO: move to NonEmptySet)"
-            Just h  -> return $ Just (e, L.Leaf (Left $ L.LeafRep h) mempty Nothing)
+            Just h  -> pure $ Just (e, L.Leaf (Left $ L.LeafRep h) Nothing)
 
-        icer (e, Right lp) = Just . (e,) <$> freeze lp
 
 
 mkLeaf :: Maybe (MLeaf s) -> [Cond.Leaf] -> ST s (MLeaf s)
