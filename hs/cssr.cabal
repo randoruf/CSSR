@@ -48,6 +48,7 @@ library
       CSSR.Algorithm.Phase3
       CSSR.AllStates
       CSSR.Inferred
+      CSSR.Internal
       CSSR.Prelude
       CSSR.Prelude.Mutable
       CSSR.Prelude.Vector
