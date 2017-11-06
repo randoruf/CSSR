@@ -36,10 +36,10 @@ addPathSpec = do
     childChecks ("root",rt) "0" (txt2event "0") 1
 
     let _0 = findLeaf rt "0"
-    childChecks ("\"0\"", _0) "1" (txt2event "10") 1
+    childChecks ("'0'", _0) "1" (txt2event "10") 1
 
     let _10 = findLeaf _0 "1"
-    childChecks ("\"10\"", _10) "1" (txt2event "110") 1
+    childChecks ("'10'", _10) "1" (txt2event "110") 1
 
   describe "adding two histories: 101 and 110" $ do
     let rt = runST $
@@ -54,14 +54,14 @@ addPathSpec = do
     childChecks ("root",rt) "1" (txt2event "1") 1
     let _0 = findLeaf rt "0"
     let _1 = findLeaf rt "1"
-    childChecks ("\"0\"", _0) "1" (txt2event "10") 1
-    childChecks ("\"1\"", _1) "0" (txt2event "01") 1
+    childChecks ("'0'", _0) "1" (txt2event "10") 1
+    childChecks ("'1'", _1) "0" (txt2event "01") 1
 
     let _01 = findLeaf _0 "1"
     let _10 = findLeaf _1 "0"
 
-    childChecks ("\"10\"", _10) "1" (txt2event "101") 1
-    childChecks ("\"01\"", _01) "1" (txt2event "110") 1
+    childChecks ("'10'", _10) "1" (txt2event "101") 1
+    childChecks ("'01'", _01) "1" (txt2event "110") 1
 
 
 addPath_Spec :: SpecWith (Arg Bool)
@@ -85,7 +85,7 @@ mkLeaf mutate = freeze =<< do
 
 buildTreeSpec :: Spec
 buildTreeSpec =
-  describe "when we build the tree \"abcc\" with depth 2" $ do
+  describe "when we build the tree 'abcc' with depth 2" $ do
     let tree = buildTree 2 (txt2event "abcc")
     it "the tree has depth 2" $
       view P.depthL tree == 2
@@ -98,21 +98,21 @@ buildTreeSpec =
     noChildTest ("root",rt) "b"
 
     let _c = findLeaf rt "c"
-    childChecks ("\"c\"", _c) "b" (txt2event "bc") 1
-    childChecks ("\"c\"", _c) "c" (txt2event "cc") 1
+    childChecks ("'c'", _c) "b" (txt2event "bc") 1
+    childChecks ("'c'", _c) "c" (txt2event "cc") 1
 
     let _cc = findLeaf _c "c"
-    childChecks ("\"cc\"", _cc) "b" (txt2event "bcc") 1
+    childChecks ("'cc'", _cc) "b" (txt2event "bcc") 1
 
-    noChildrenTest ("\"bcc\"") $ findLeaf _cc "b"
+    noChildrenTest ("'bcc'") $ findLeaf _cc "b"
 
     let _bc = findLeaf _c "b"
-    childChecks ("\"bc\"", _bc) "a" (txt2event "abc") 1
-    noChildrenTest ("\"abc\"") $ findLeaf _bc "a"
+    childChecks ("'bc'", _bc) "a" (txt2event "abc") 1
+    noChildrenTest "'abc'" $ findLeaf _bc "a"
 
 alphabetSpec :: Spec
 alphabetSpec =
-  it "building a tree from \"abcc\" finds the correct alphabet" $ do
+  it "building a tree from 'abcc' finds the correct alphabet" $ do
     let alpha = getAlphabet $ buildTree 2 (txt2event "abcc")
     V.all (\s -> HS.member s $ HS.fromList  $ T.singleton <$> "abc") (idxToSym alpha)
 

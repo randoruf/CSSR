@@ -1,5 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -18,13 +16,12 @@ import qualified Data.HashMap.Strict       as HM
 import qualified Data.Vector               as V
 import qualified Data.HashTable.ST.Cuckoo  as C
 import qualified Data.HashTable.Class      as H
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as Map
 
 import Data.List.Set (ListSet(..))
 import qualified Data.List.Set as S
 
 type LLeaf = L.Leaf
+type LTree = L.Tree
 
 -------------------------------------------------------------------------------
 -- Mutable Looping Tree ADTs
@@ -98,7 +95,6 @@ toNodeList l = go [] [Left l]
   foldMapM :: (Monoid m, Foldable t, Monad st) => (a -> st m) -> t a -> st m
   foldMapM f = foldrM (\a m -> (<> m) <$> f a) mempty
 
-
 type MLoop s = MLeaf s
 type MTerminal s = MLeaf s
 type MLNode s = Either (MLoop s) (MLeaf s)
@@ -111,49 +107,72 @@ data MTree s = MTree
 addTerminal :: MTree s -> MTerminal s -> ST s ()
 addTerminal tree term = modifySTRef (terminals tree) (S.insert term)
 
-freezeTree :: forall s . MTree s -> ST s L.Tree
-freezeTree tree = L.Tree
-  <$> (readSTRef (terminals tree) >>= freezeTerms)
-  <*> freeze (root tree)
+freezeTree :: forall s . MTree s -> ST s LTree
+freezeTree tree = do
+  rt <- freeze (root tree)
+  ts <- readSTRef (terminals tree)
+  pure $ L.Tree (findTerms (fmap path ts) rt) rt
   where
-    freezeTerms :: ListSet (MLeaf s) -> ST s (HashSet L.Leaf)
-    freezeTerms _ = pure mempty -- undefined -- fmap HS.fromList . mapM freezeLeaf . S.toList
+    findTerms :: ListSet (Vector Event) -> LLeaf -> HashSet LLeaf
+    findTerms (unListSet->ts) rt =
+      if length ts /= length checklist
+      then impossible "all terminals must be found in the frozen tree"
+      else HS.fromList checklist
+     where
+      checklist :: [LLeaf]
+      checklist = mapMaybe (\t -> rt ^? ix t) ts
 
-freeze :: forall s . MLeaf s -> ST s L.Leaf
+freeze :: MLeaf s -> ST s LLeaf
 freeze ml = do
-  ll <- freezeOne ml
-  pure ll
-
+  rt <- initOne ml
+  go rt [(path ml, children ml)]
  where
-  freezeOne :: MLeaf s -> ST s L.Leaf
-  freezeOne ml = do
-    traceM $ "freezing: " ++ show (path ml)
-    f  <- readSTRef (frequency ml)
-    cs <- freezeDown ml =<< (H.toList . children) ml
-    hs <- readSTRef (histories ml)
-    let cur = L.defLeaf (path ml) (L.LeafBody hs f cs)
-        cur'= cur & setChildren .~ HM.map (set L.parentL (Just cur)) cs
-    pure cur'
+  go :: LLeaf -> [(Vector Event, HashTable s Event (MLNode s))] -> ST s LLeaf
+  go rt [] = pure rt
+  go rt ((p,cs):nxt) = do
+    childs <- freezeChildren rt p =<< H.toList cs
+    let
+      pl   = fromMaybe (impossible "parent must exist") (rt ^? ix p)
+      rt'  = rt & ix p . L.lchildrenL .~ childs
+      rt'' = foldr (setParent pl . V.snoc p) rt' (HM.keys childs)
 
-  setChildren :: ASetter' LLeaf (HashMap Event LLeaf)
-  setChildren = L.bodyL . _Right . L.childrenL
+    append <- mapMaybe (uncurry (queueNext p)) <$> H.toList cs
+    go rt' (nxt <> append)
 
-  freezeDown :: MLeaf s -> [(Event, MLNode s)] -> ST s (HashMap Event L.Leaf)
-  freezeDown (path->p) cs = HM.fromList . catMaybes <$> mapM icer cs
-    where
-      icer :: (Event, MLNode s) -> ST s (Maybe (Event, L.Leaf))
-      icer (e, Right nxt) = Just . (e,) <$> freeze nxt
-      icer (e, Left  lp)  = trace ("loop! " <> show p <> "->" <> show e <> " == " <> show (path lp)) $
-        Just . (e,) <$> pure (L.defUninitializedLoop (p `V.snoc` e) (path lp))
+  setParent :: LLeaf -> Vector Event -> LLeaf -> LLeaf
+  setParent p cpath rt = rt & ix cpath . L.parentL .~ Just p
 
-  initLoops :: LLeaf -> HashMap Event LLeaf -> HashMap Event LLeaf
-  initLoops p = HM.mapWithKey (\e c -> either (go e c) (const c) (L.body c))
+  queueNext
+    :: Vector Event
+    -> Event
+    -> MLNode s
+    -> Maybe (Vector Event, HashTable s Event (MLNode s))
+  queueNext p e = either (const Nothing) (Just . (p `V.snoc` e,) . children)
+
+freezeChildren
+  :: LLeaf
+  -> Vector Event
+  -> [(Event, MLNode s)]
+  -> ST s (HashMap Event LLeaf)
+freezeChildren rt p cs = HM.fromList . catMaybes <$> mapM icer cs
+ where
+  icer :: (Event, MLNode s) -> ST s (Maybe (Event, LLeaf))
+  icer (e, c) = either (mkLoop e) (mkLeaf e) c
+
+  mkLoop, mkLeaf :: Event -> MLeaf s -> ST s (Maybe (Event, LLeaf))
+  mkLeaf e nxt = Just . (e,) <$> initOne nxt
+  mkLoop e c = pure . Just $ (e, L.Leaf (p `V.snoc` e) (Left lp) Nothing)
    where
-    go :: Event -> LLeaf -> Either (Vector Event) LLeaf -> LLeaf
-    go _ c (Right _) = c
-    go e c (Left up) = trace (show (map L.path (L.ancestors c))) $
-      fromMaybe (impossible "bad loop") $
-      head $ filter ((== (L.path p `V.snoc` e)) . L.path) (L.ancestors c)
+    lp :: LLeaf
+    lp = fromMaybe (impossible "bad loop!") (L.navigate rt (path c))
+
+initOne :: MLeaf s -> ST s LLeaf
+initOne ml = do
+  f  <- readSTRef (frequency ml)
+  hs <- readSTRef (histories ml)
+  pure $ L.Leaf (path ml) (Right $ L.LeafBody hs f mempty) Nothing
+
+-- ========================================================================= --
 
 
 mkLeaf :: Maybe (MLeaf s) -> Event -> [Cond.Leaf] -> ST s (MLeaf s)
@@ -229,8 +248,8 @@ isHomogeneous sig ll = do
     childDists :: MLeaf s -> ST s [Vector Integer]
     childDists = (fmap.fmap) Prob.frequency . childHistories
 
-excisable :: forall s . Double -> MLeaf s -> ST s (Maybe (MLeaf s))
-excisable sig ll = I.excisableM (readSTRef . parent) (readSTRef . frequency) sig ll
+excisable :: Double -> MLeaf s -> ST s (Maybe (MLeaf s))
+excisable = I.excisableM (readSTRef . parent) (readSTRef . frequency)
 
 getAncestors :: MLeaf s -> ST s [MLeaf s]
 getAncestors = I.getAncestorsM (readSTRef . parent)

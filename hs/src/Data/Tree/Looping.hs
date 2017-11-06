@@ -1,10 +1,14 @@
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Data.Tree.Looping where
 
-import qualified Data.HashMap.Strict as HM (toList, lookup)
+import qualified Data.HashMap.Strict as HM
+import qualified Data.Vector as V
+
 
 import CSSR.Prelude
 
@@ -16,41 +20,27 @@ type Terminal = Leaf
 
 data Leaf = Leaf
   { path   :: Vector Event
-  , body   :: Either (Either (Vector Event) {-super hack to freeze-} Leaf) LeafBody
+  , body   :: Either Leaf LeafBody
   , parent :: Maybe Leaf
   } deriving (Generic, NFData)
 
 
-defLeaf :: Vector Event -> LeafBody -> Leaf
-defLeaf a b = Leaf a (Right b) Nothing
-
-mkLeaf :: Vector Event -> LeafBody -> Maybe Leaf -> Leaf
-mkLeaf a b c = Leaf a (Right b) c
-
-defLoop :: Vector Event -> Leaf -> Leaf
-defLoop a b = Leaf a (Left (Right b)) Nothing
-
-defUninitializedLoop :: Vector Event -> Vector Event -> Leaf
-defUninitializedLoop a b = Leaf a (Left (Left b)) Nothing
-
-
 instance Show Leaf where
   show l = I.showLeaf toConds toFreqs toChilds "Looping" (path l) l
-    where
-      toConds :: Leaf -> (Bool, [Vector Event])
-      toConds l =
-        case body l of
-          Left  lp -> (True, [either (const mempty) path lp])
-          Right bd -> (False, view Cond.lobsL <$> toList (histories bd))
+   where
+    toConds :: Leaf -> (Bool, [Vector Event])
+    toConds l = case body l of
+      Left  lp -> (True, [path lp])
+      Right bd -> (False, view Cond.lobsL <$> toList (histories bd))
 
-      toFreqs :: Leaf -> [Vector Integer]
-      toFreqs = either (const []) ((:[]) . view frequencyL) . body
+    toFreqs :: Leaf -> [Vector Integer]
+    toFreqs = either (const []) ((:[]) . view frequencyL) . body
 
-      toChilds :: Leaf -> [(Event, Leaf)]
-      toChilds l = either (const []) (HM.toList . view childrenL) (body l)
+    toChilds :: Leaf -> [(Event, Leaf)]
+    toChilds l = either (const []) (HM.toList . view childrenL) (body l)
 
 instance Hashable Leaf where
-  hashWithSalt salt l = hashWithSalt salt (mapMaybe pToHashable ps)
+  hashWithSalt salt l = hashWithSalt salt (pToHashable l, mapMaybe pToHashable ps)
    where
     ps :: [Leaf]
     ps = I.getAncestors parent l
@@ -67,10 +57,10 @@ instance Eq Leaf where
     && preview (bodyL . _Right) l0 == preview (bodyL . _Right) l1
 
     -- probably not required, but if we wind up comparing loops, go up the chain
-    && parent l0 == parent l1
+    -- && parent l0 == parent l1
 
 
-bodyL :: Lens' Leaf (Either (Either (Vector Event) Leaf) LeafBody)
+bodyL :: Lens' Leaf (Either Leaf LeafBody)
 bodyL = lens body $ \l b -> l { body = b }
 
 pathL :: Lens' Leaf (Vector Event)
@@ -79,6 +69,7 @@ pathL = lens path $ \b f -> b { path = f }
 parentL :: Lens' Leaf (Maybe Leaf)
 parentL = lens parent $ \b f -> b { parent = f }
 
+-- TODO: decide if LeafRep is a better implementation
 data LeafRep = LeafRep deriving (Show, Eq, Generic, NFData)
 
 instance Hashable LeafRep
@@ -92,8 +83,7 @@ data LeafBody = LeafBody
 instance Hashable LeafBody
 
 instance Show LeafBody where
-  show (LeafBody h f c) =
-    "hists: " ++ Cond.showAllObs (toList h) ++ ", freq: " ++ show f
+  show (LeafBody h f _) = "hists: " ++ Cond.showAllObs (toList h) ++ ", freq: " ++ show f
 
 historiesL :: Lens' LeafBody (HashSet Cond.Leaf)
 historiesL = lens histories $ \b f -> b { histories = f }
@@ -104,21 +94,13 @@ frequencyL = lens frequency $ \b f -> b { frequency = f }
 childrenL :: Lens' LeafBody (HashMap Event Leaf)
 childrenL = lens children $ \l x -> l { children = x }
 
+lchildrenL :: ASetter' Leaf (HashMap Event Leaf)
+lchildrenL = bodyL . _Right . childrenL
 
 data Tree = Tree
   { terminals :: HashSet Leaf
   , root :: Leaf
   } deriving (Eq, Generic, NFData)
-
-terminalsL :: Lens' Tree (HashSet Leaf)
-terminalsL = lens terminals $ \b f -> b { terminals = f }
-
-rootL :: Lens' Tree Leaf
-rootL = lens root $ \b f -> b { root = f }
-
-ancestors :: Leaf -> [Leaf]
-ancestors l = trace (show (path l) ++ " ancestors: " ++ show (fmap path p)) p
-  where p = I.getAncestors parent l
 
 
 instance Show Tree where
@@ -137,10 +119,7 @@ instance Show Tree where
     showTerm l =
       case body l of
         Right b -> strLeaf l (toList (histories b)) (frequency b)
-        Left lp -> strLoop (either undefined identity lp)
-
-    strLoop :: Leaf -> String
-    strLoop p     = "Leaf{Loop(" ++ show (path p) ++ ")}"
+        Left lp -> "Leaf{Loop(" ++ show (path lp) ++ ")}"
 
     strLeaf :: Leaf -> [Cond.Leaf] -> Vector Integer -> String
     strLeaf l hs fs = intercalate ", "
@@ -149,48 +128,48 @@ instance Show Tree where
       , show (Prob.freqToDist fs) ++ "}"
       ]
 
---path :: forall f. Applicative f
---             => Vector Event
---             -> (LeafBody -> f LeafBody)
---             -> Leaf
---             -> f Leaf
---path events fn = go 0
---  where
---    go :: Int -> Leaf -> f Leaf
---    go dpth (Leaf body childs _) =
---      if dpth == V.length events - 1
---      then Leaf <$> fn body <*> pure childs <*> Nothing
---      else Leaf <$> fn body <*> nextChilds <*> Nothing
---
---      where
---        nextChilds :: f (HashMap Event Leaf)
---        nextChilds =
---          case HM.lookup c childs of
---            Just child -> HM.insert c <$> go (dpth + 1) child <*> pure childs
---            Nothing -> HM.insert c <$> buildNew dpth <*> pure childs
---          where
---            c :: Event
---            c = V.unsafeIndex events dpth
---
---
---        buildNew :: Int -> f Leaf
---        buildNew d
---          | d == V.length events - 1 = Leaf <$> mkBod events <*> pure mempty
---          | otherwise = Leaf <$> mkBod es <*> childs_
---          where
---            c :: Event
---            c = V.unsafeIndex events (d + 1)
---
---            es :: Vector Event
---            es = V.take (d + 1) events
---
---            mkBod :: Vector Event -> f LeafBody
---            mkBod es' = fn (LeafBody es' 0 mempty)
---
---            childs_ :: f (HashMap Char Leaf)
---            childs_ = HM.singleton c <$> buildNew (d + 1)
 
+terminalsL :: Lens' Tree (HashSet Leaf)
+terminalsL = lens terminals $ \b f -> b { terminals = f }
 
+rootL :: Lens' Tree Leaf
+rootL = lens root $ \b f -> b { root = f }
+
+navigate :: Leaf -> Vector Event -> Maybe Leaf
+navigate l = I.navigate go l
+ where
+  go :: Leaf -> Event -> Maybe Leaf
+  go (Leaf _ (Right bd) _) e = HM.lookup e (children bd)
+  go (Leaf _ (Left lp) _) e = navigate lp (V.singleton e)
+
+ancestors :: Leaf -> [Leaf]
+ancestors l = trace (show (path l) ++ " ancestors: " ++ show (fmap path p)) p
+  where p = I.getAncestors parent l
+
+-------------------------------------------------------------------------------
+-- Lenses for Looping Tree
+-------------------------------------------------------------------------------
+type instance Index Leaf = Vector Event
+type instance IxValue Leaf = Leaf
+
+instance Ixed Leaf where
+  ix :: Vector Event -> Traversal' Leaf (IxValue Leaf)
+  ix histories = go 0
+    where
+      go dpth f p@(Leaf pth bod mprnt)
+        | V.length histories == dpth = f p
+        | otherwise = either
+            (go dpth f)
+            (\b -> case HM.lookup c (children b) of
+              Nothing -> pure p
+              Just child -> goAgain <$> go (dpth+1) f child
+                where
+                  goAgain :: Leaf -> Leaf
+                  goAgain child' = Leaf pth (Right $ b { children = HM.insert c child' (children b)} ) mprnt
+            ) bod
+        where
+          c :: Event
+          c = histories ! dpth
 
 -------------------------------------------------------------------------------
 -- Predicates for the consturction of a looping tree
