@@ -1,5 +1,6 @@
 module CSSR.Internal
   ( statesAndTransitions
+  , pathToState
   ) where
 
 import CSSR.Prelude
@@ -26,15 +27,15 @@ statesAndTransitions alpha looping = (terms, mapTransitions terms)
   mapTransitions terms = mapHashKeys transitions (HS.toMap terms)
 
   transitions :: Leaf -> HashMap Symbol (Maybe Terminal)
-  transitions t = HM.mapWithKey (pathToState looping t) (symToIdx alpha)
+  transitions t = HM.mapWithKey (curry $ pathToState looping t) (symToIdx alpha)
 
 
-pathToState :: Tree -> Terminal -> Event -> Int -> Maybe Terminal
-pathToState tree t0 evt idx = do
+pathToState :: Tree -> Terminal -> (Event, Int) -> Maybe Terminal
+pathToState tree t0 (evt, idx) = do
   let term = fromMaybe dont (preview (L.bodyL . _Right) t0)
-  guard (L.frequency term V.! idx == 0)
-  l <- view L.rootL tree ^? ix wa
-  guard (not $ l `HS.member` L.terminals tree)
+  guard (L.frequency term V.! idx /= 0)
+  l <- L.navigate' (L.root tree) wa
+  guard (l `HS.member` L.terminals tree)
   pure l
  where
   wa :: Vector Event

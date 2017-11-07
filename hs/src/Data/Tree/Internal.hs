@@ -44,6 +44,9 @@ isHomogeneousM getChildDists sig (parent, pdist) =
 navigate :: forall lf . (lf -> HashMap Event lf) -> lf -> Vector Event -> Maybe lf
 navigate kids rt history = runIdentity $ navigateM (pure . kids) rt history
 
+navigate' :: forall lf . (() -> Bool) -> (lf -> HashMap Event lf) -> lf -> Vector Event -> Maybe lf
+navigate' stp kids rt history = runIdentity $ navigateM' stp (pure . kids) rt history
+
 navigateM :: forall lf m . Monad m => (lf -> m (HashMap Event lf)) -> lf -> Vector Event -> m (Maybe lf)
 navigateM = navigateM' (const False)
 

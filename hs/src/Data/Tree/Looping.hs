@@ -142,9 +142,14 @@ navigate l = I.navigate go l
   go (Leaf _ (Right bd) _) = children bd
   go (Leaf _ (Left lp) _) = view (bodyL . _Right . childrenL) lp
 
+navigate' :: Leaf -> Vector Event -> Maybe Leaf
+navigate' l = I.navigate' (const True) go l
+ where
+  go :: Leaf -> HashMap Event Leaf
+  go = either (view (bodyL . _Right . childrenL)) children . body
+
 ancestors :: Leaf -> [Leaf]
-ancestors l = trace (show (path l) ++ " ancestors: " ++ show (fmap path p)) p
-  where p = I.getAncestors parent l
+ancestors = I.getAncestors parent
 
 -------------------------------------------------------------------------------
 -- Lenses for Looping Tree
