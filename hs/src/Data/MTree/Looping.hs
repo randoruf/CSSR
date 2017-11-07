@@ -134,7 +134,7 @@ freeze ml = do
     let
       pl   = fromMaybe (impossible "parent must exist") (rt ^? ix p)
       rt'  = rt & ix p . L.lchildrenL .~ childs
-      rt'' = foldr (setParent pl . V.snoc p) rt' (HM.keys childs)
+      rt'' = foldr (setParent pl . (`V.cons` p)) rt' (HM.keys childs)
 
     append <- mapMaybe (uncurry (queueNext p)) <$> H.toList cs
     go rt' (nxt <> append)
@@ -147,7 +147,7 @@ freeze ml = do
     -> Event
     -> MLNode s
     -> Maybe (Vector Event, HashTable s Event (MLNode s))
-  queueNext p e = either (const Nothing) (Just . (p `V.snoc` e,) . children)
+  queueNext p e = either (const Nothing) (Just . (e `V.cons` p,) . children)
 
 freezeChildren
   :: LLeaf
@@ -161,7 +161,7 @@ freezeChildren rt p cs = HM.fromList . catMaybes <$> mapM icer cs
 
   mkLoop, mkLeaf :: Event -> MLeaf s -> ST s (Maybe (Event, LLeaf))
   mkLeaf e nxt = Just . (e,) <$> initOne nxt
-  mkLoop e c = pure . Just $ (e, L.Leaf (p `V.snoc` e) (Left lp) Nothing)
+  mkLoop e c = pure . Just $ (e, L.Leaf (e `V.cons` p) (Left lp) Nothing)
    where
     lp :: LLeaf
     lp = fromMaybe (impossible "bad loop!") (L.navigate rt (path c))
@@ -185,7 +185,7 @@ mkLeaf p e hs = MLeaf lpath
   <*> newSTRef False
  where
   lpath :: Vector Event
-  lpath = maybe mempty path p `V.snoc` e
+  lpath = e `V.cons` maybe mempty path p
 
 
 mkRoot :: Cond.Leaf -> ST s (MLeaf s)

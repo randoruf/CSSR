@@ -154,15 +154,15 @@ type instance IxValue Leaf = Leaf
 
 instance Ixed Leaf where
   ix :: Vector Event -> Traversal' Leaf (IxValue Leaf)
-  ix histories = go 0
+  ix histories = go (V.length histories - 1)
     where
       go dpth f p@(Leaf pth bod mprnt)
-        | V.length histories == dpth = f p
+        | dpth < 0  = f p
         | otherwise = either
             (go dpth f)
             (\b -> case HM.lookup c (children b) of
               Nothing -> pure p
-              Just child -> goAgain <$> go (dpth+1) f child
+              Just child -> goAgain <$> go (dpth-1) f child
                 where
                   goAgain :: Leaf -> Leaf
                   goAgain child' = Leaf pth (Right $ b { children = HM.insert c child' (children b)} ) mprnt
