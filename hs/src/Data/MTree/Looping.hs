@@ -199,12 +199,14 @@ mkRoot hrt = MLeaf mempty
 
 
 navigateM :: forall s . MLNode s -> Vector Event -> ST s (Maybe (MLNode s))
-navigateM = I.navigateM (H.lookup . children . reify)
-  where
-    reify :: MLNode s -> MLeaf s
-    reify (Left  l) = l
-    reify (Right l) = l
+navigateM = I.navigateM go
+ where
+  go :: MLNode s -> ST s (HashMap Event (MLNode s))
+  go = fmap HM.fromList . H.toList . children . reify
 
+  reify :: MLNode s -> MLeaf s
+  reify (Left  l) = l
+  reify (Right l) = l
 -------------------------------------------------------------------------------
 -- Predicates for the construction of a looping tree
 

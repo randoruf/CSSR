@@ -7,6 +7,7 @@ import CSSR.Prelude
 import qualified CSSR.Probabilistic as Prob
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import qualified Data.HashMap.Strict as HM
 
 
 -- | === Homogeneity
@@ -40,29 +41,41 @@ isHomogeneousM getChildDists sig (parent, pdist) =
   all (Prob.isSameDist' sig pdist) <$> getChildDists parent
 
 
-navigate :: forall lf . (lf -> Event -> Maybe lf) -> lf -> Vector Event -> Maybe lf
-navigate lookup rt history =
-  runIdentity $ navigateM (\a b -> pure $ lookup a b) rt history
+navigate :: forall lf . (lf -> HashMap Event lf) -> lf -> Vector Event -> Maybe lf
+navigate kids rt history = runIdentity $ navigateM (pure . kids) rt history
 
+navigateM :: forall lf m . Monad m => (lf -> m (HashMap Event lf)) -> lf -> Vector Event -> m (Maybe lf)
+navigateM = navigateM' (const False)
 
-navigateM :: forall lf m . Monad m => (lf -> Event -> m (Maybe lf)) -> lf -> Vector Event -> m (Maybe lf)
-navigateM lookup rt (V.toList -> history)
+navigateM'
+  :: forall lf m . Monad m
+  => (() -> Bool)
+  -> (lf -> m (HashMap Event lf))
+  -> lf
+  -> Vector Event
+  -> m (Maybe lf)
+navigateM' earlyTerm kids rt (V.toList -> history)
   | null history = pure (Just rt)
   | otherwise    = go history rt
-  where
-    go :: [Event] -> lf -> m (Maybe lf)
-    go [] lf = pure (Just lf)
-    go os@(_:_) lf = case splitLast os of
+ where
+  go :: [Event] -> lf -> m (Maybe lf)
+  go [] lf = pure (Just lf)
+  go os@(_:_) lf =
+    case splitLast os of
       Nothing      -> impossible "nonempty here"
-      Just (os, o) -> lookup lf o
-        >>= \case
-          Just ch -> go os ch
-          Nothing -> pure Nothing
+      Just (os, o) -> do
+        cs <- kids lf
+        if null cs && earlyTerm ()
+        then pure (Just lf)
+        else
+          case HM.lookup o cs of
+            Just ch -> go os ch
+            Nothing -> pure Nothing
 
-    splitLast :: [a] -> Maybe ([a], a)
-    splitLast = \case
-      [] -> Nothing
-      as -> Just (init as, last as)
+  splitLast :: [a] -> Maybe ([a], a)
+  splitLast = \case
+    [] -> Nothing
+    as -> Just (init as, last as)
 
 
 -- | returns ancestors in order of how they should be processed

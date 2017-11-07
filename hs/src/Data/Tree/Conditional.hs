@@ -159,7 +159,7 @@ instance Ixed Leaf where
           goAgain child' = Leaf bod (HM.insert c child' childs)
 
 navigate :: Tree -> Vector Event -> Maybe Leaf
-navigate (view rootL -> rt) history = I.navigate (\ls e -> HM.lookup e (view childrenL ls)) rt history
+navigate (view rootL -> rt) history = I.navigate (view childrenL) rt history
 
 -------------------------------------------------------------------------------
 -- Show helper functions

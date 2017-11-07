@@ -138,9 +138,9 @@ rootL = lens root $ \b f -> b { root = f }
 navigate :: Leaf -> Vector Event -> Maybe Leaf
 navigate l = I.navigate go l
  where
-  go :: Leaf -> Event -> Maybe Leaf
-  go (Leaf _ (Right bd) _) e = HM.lookup e (children bd)
-  go (Leaf _ (Left lp) _) e = navigate lp (V.singleton e)
+  go :: Leaf -> HashMap Event Leaf
+  go (Leaf _ (Right bd) _) = children bd
+  go (Leaf _ (Left lp) _) = view (bodyL . _Right . childrenL) lp
 
 ancestors :: Leaf -> [Leaf]
 ancestors l = trace (show (path l) ++ " ancestors: " ++ show (fmap path p)) p
