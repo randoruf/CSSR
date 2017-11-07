@@ -26,7 +26,6 @@ spec :: Spec
 spec =
   describe "a long even process root" $ do
     let ltree = runST $ grow 0.01 (initialization 3 longEP) >>= ML.freezeTree
-    traceM $ show ltree
 
     describe "the root looping node" $ do
       it "should have the expected frequency" $

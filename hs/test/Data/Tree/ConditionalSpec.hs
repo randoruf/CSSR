@@ -19,7 +19,6 @@ spec :: Spec
 spec = do
   describe "converting a parse tree to a conditional tree" $ do
     let tree = Cond.convert Parse.tree
-    traceM (show tree)
     it "removes the last children from a Parse Tree" $
       all (isNothing . Cond.navigate tree) $ fmap txt2event ["abc", "bcc"]
 
@@ -30,7 +29,6 @@ spec = do
     let s = V.fromList . fmap T.singleton $ shortEP
     let ptree = Parse.buildTree 3 s
     let tree = Cond.convert ptree
-    traceM (show tree)
 
     it "finds the correct alphabet" $
       mkAlphabet (HS.fromList ["0", "1"]) == Cond.alphabet tree

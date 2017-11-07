@@ -16,7 +16,6 @@ tree = MParse.buildTree 2 (V.fromList $ T.singleton <$> "abcc")
 spec :: Spec
 spec =
   describe "buildTree and navigation" $ do
-    traceM (show tree)
     describe "depth 0" $
       tree `hasPath` []
 
