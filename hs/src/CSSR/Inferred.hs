@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 module CSSR.Inferred where
 
 import CSSR.Prelude
@@ -9,10 +10,8 @@ type AllStates = [State]
 
 -- | calculates the probability of all the histories up to length/depth indicated, based on a given allStates
 inferredDistribution :: Cond.Tree -> Int -> AllStates -> [(Cond.Leaf, Double)]
-inferredDistribution tree d allstates =
-  fmap (\ h -> (h, inferredHist (view lobsL h) tree allstates)) $ tree `getDepth` d
-  where
-    getDepth = undefined
+inferredDistribution tree@Cond.Tree{Cond.depth} d allstates =
+  fmap (\h -> (h, inferredCond (view lobsL h) tree allstates)) (tree `Cond.getDepth` depth)
 
 -- | calculates the probability of a single, raw history (in string form) based on a given allStates and alphabet
 inferredHist :: Vector Event -> Cond.Tree -> AllStates -> Double
