@@ -54,7 +54,7 @@ library
       CSSR.Prelude.Vector
       CSSR.Probabilistic
       CSSR.Results
-      CSSR.Statistics.CMu
+      CSSR.Statistics.Complexity
       CSSR.Statistics.Entropy.Relative
       CSSR.Statistics.Entropy.RelativeRate
       CSSR.Statistics.EntropyRate
