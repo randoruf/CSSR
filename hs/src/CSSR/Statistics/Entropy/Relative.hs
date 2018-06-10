@@ -42,3 +42,49 @@ relativeEntropy dist adjustedDataSize =
       where
         observedProb :: Double
         observedProb = (fromIntegral . sum $ view Cond.lfrequencyL leaf) / adjustedDataSize
+
+{-
+  def relativeEntropy(dist:InferredDistribution, adjustedDataSize:Double):Double = {
+    val relativeEntropy:Double = dist.foldLeft(0d) {
+      case (incrementalRelEnt, (leaf, inferredProb)) =>
+        val observedProb = leaf.totalCounts / adjustedDataSize
+        if (observedProb > 0){
+          val cacheRE = incrementalRelEnt + discreteEntropy(observedProb, inferredProb)
+          cacheRE
+        } else {
+          incrementalRelEnt
+        }
+    }
+    if (relativeEntropy < 0) 0 else relativeEntropy
+  }
+-}
+
+{-
+-- Kullback-Leibler Distance:
+--
+-- \begin{equation}
+--    d= \sum_{k} p_k * \log_2 * { p_k \over q_k }
+-- \end{equation}
+--
+klDist
+  :: [Probability] -- ^ observed probabilities
+  -> [Probability] -- ^ inferred probabilities
+  -> Double
+klDist = sum (uncurry . discreteEntropy) . zip
+
+  def entropyRate(allStates: AllStates):Double = {
+    (-1) * allStates.states
+      .view
+      .zipWithIndex
+      .map {
+        case (state, i) =>
+          val freq = allStates.distribution(i)
+
+          state.distribution.foldLeft(0d) {
+            // technically, we can remove branching, but I don't know what scala will do, given log(0)
+            case (stateEntRate, prob) if prob > 0 => stateEntRate + (freq * (prob * log2(prob)))
+            // Also note that scala logs are the natural log
+            case (         ser, prob) if prob <=0 => ser
+          } }
+      .sum[Double]
+-}

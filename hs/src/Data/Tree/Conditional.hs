@@ -171,3 +171,14 @@ showAllObs = T.unpack . T.intercalate "," . fmap (T.concat . V.toList . obs . bo
 showAllDists :: [Leaf] -> String
 showAllDists = show . fmap (intercalate "," . V.toList . fmap f'4 . Prob.freqToDist . frequency . body)
 
+
+getDepth :: Tree -> Int -> [Leaf]
+getDepth (view rootL -> rt) = go [rt]
+ where
+  go :: [Leaf] -> Int -> [Leaf]
+  go ls 0 = ls
+  go ls d
+    | d <= 0 = ls
+    | otherwise = go (foldMap (HM.elems . view childrenL) ls) (d-1)
+
+
