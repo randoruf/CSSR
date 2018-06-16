@@ -27,6 +27,7 @@ module CSSR.Prelude
   , DataFileContents
   , mapHashKeys
   ) where
+import Data.CSSR.Alphabet (Event, Symbol)
 
 import Control.Arrow       as X
 import Control.Exception   as X
@@ -97,9 +98,6 @@ head = unsafeHead `saferBy` null
 
 type Locations = HashMap Idx Integer
 type Idx = Integer
-
-type Event = Text
-type Symbol = Event
 
 type Delim = Text
 type DataFileContents = Vector Event

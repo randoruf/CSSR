@@ -5,7 +5,7 @@ module CSSR.Internal
 
 import CSSR.Prelude
 
-import Data.Alphabet (Alphabet(..))
+import Data.CSSR.Alphabet (Alphabet(..))
 
 import Data.Tree.Looping (Tree, Terminal, Leaf)
 import qualified Data.Tree.Looping as L

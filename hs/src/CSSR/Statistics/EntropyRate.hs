@@ -1,14 +1,15 @@
 module CSSR.Statistics.EntropyRate where
 
 import CSSR.Prelude
-import CSSR.AllStates
-import Data.Alphabet
+import Data.CSSR.State
+import Data.CSSR.Alphabet
 import qualified Data.HashMap.Strict as HM
+import qualified Data.HashSet as HS
 
 
-entropyRate :: Alphabet -> AllStates -> Double
+entropyRate :: Alphabet -> HashSet State -> Double
 entropyRate a as =
-  (-1) * sum (go <$> as)
+  (-1) * sum (HS.map go as)
   where
     -- FIXME: why is this described as both prob and freq?
     toProb :: State -> Double

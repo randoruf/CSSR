@@ -1,0 +1,129 @@
+-------------------------------------------------------------------------------
+-- |
+-- Module    :  Data.CSSR.State
+-- Copyright :  (c) Sam Stites 2017
+-- License   :  BSD3
+-- Maintainer:  sam@stites.io
+-- Stability :  experimental
+-- Portability: non-portable
+--
+-- Representations of CSSR State types
+-------------------------------------------------------------------------------
+{-# LANGUAGE NamedFieldPuns #-}
+module Data.CSSR.State where
+
+import Protolude hiding (State, null, Symbol)
+
+import Data.Text (Text)
+import Data.HashMap.Strict (HashMap)
+import Data.HashSet (HashSet)
+import Data.Vector (Vector, (!))
+import GHC.Word (Word)
+
+import qualified Data.Char as C
+import qualified Data.Text as T
+import qualified Data.Vector as V
+import qualified Data.HashMap.Strict as HM
+import qualified Data.HashSet as HS
+
+import qualified Data.Tree.Looping as L
+import Data.CSSR.Alphabet
+
+-- | type alias of how CSSR prefers to handle the aggregation of states
+type AllStates = HashSet State
+
+-- | A 'State' in CSSR is a terminal leaf and all valid transitions out
+-- of this state into another state.
+data State = State
+  { transitions :: HashMap Event State
+  , terminal :: L.Leaf
+  } deriving (Show, Eq)
+
+instance Hashable State where
+  hashWithSalt s st =
+    hashWithSalt s (termpath st, HM.map termpath (transitions st))
+   where
+    termpath :: State -> Vector Event
+    termpath = L.path . terminal
+
+-- | given a state and a valid event, attempt to transition to a new state
+transitionTo :: State -> Event -> Maybe State
+transitionTo = flip HM.lookup . transitions
+
+-- | check to see if a state's terminal node represents the root node.
+isRoot :: State -> Bool
+isRoot = V.null . L.path . terminal
+
+-- * Distribution-based properties of a state
+
+-- | Given the alphabet space and all states, return the global frequencies
+-- of each state
+frequency :: Alphabet -> HashSet State -> HashMap State (HashMap Symbol Integer)
+frequency alpha = HM.fromList . toList . HS.map ssize
+ where
+  ssize :: State -> (State, HashMap Symbol Integer)
+  ssize s = (s, HM.map (\i -> freqs ! i) (symToIdx alpha))
+   where
+    freqs :: Vector Integer
+    freqs = tofreqs . L.body . terminal $ s
+
+    tofreqs :: Either L.Leaf L.LeafBody -> Vector Integer
+    tofreqs = either (panic "states do not loop") L.frequency
+
+distributions :: Alphabet -> AllStates -> HashMap State (HashMap Symbol Double)
+distributions alpha allstates = HM.fromList $ map toprobs freq
+  where
+    freq :: [(State, HashMap Symbol Integer)]
+    freq = HM.toList (frequency alpha allstates)
+
+    toprobs :: (State, HashMap Symbol Integer) -> (State, HashMap Symbol Double)
+    toprobs (s, hms) = (s, HM.map ((/ (fromIntegral . sum . HM.elems $ hms)) . fromIntegral) hms)
+
+distributionsLookup :: Alphabet -> AllStates -> State -> HashMap Event Double
+distributionsLookup alpha allstates s =
+  HM.lookupDefault (panic "all states should be accounted for") s $
+    distributions alpha allstates
+
+distributionLookup :: Alphabet -> AllStates -> State -> Double
+distributionLookup alpha allstates s =
+  HM.lookupDefault (panic "all symbols should be accounted for") s $
+    distribution alpha allstates
+
+distribution :: Alphabet -> AllStates -> HashMap State Double
+distribution alpha allstates = HM.map ((/total) . fromIntegral) freq
+ where
+  freq :: HashMap State Integer
+  freq = HM.map (sum . HM.elems) (frequency alpha allstates)
+
+  total :: Double
+  total = fromIntegral $ sum (HM.elems freq)
+
+--   val states      = eqClasses.toArray
+--   val transitions:Array[HashMap[Event, TransitionState]] = states.map{ state => transitionHashMap(state) }
+
+--   val stateIndexes:Array[Set[Int]]        = states.map{_.histories.flatHashMap{_.locations.keySet}.toSet}
+--   val stateHashMap:HashMap[State, Int] = states.zipWithIndex.toHashMap
+
+--   val frequency:DenseVector[Double]    = new DenseVector[Double](stateIndexes.map{_.size.toDouble})
+--   val distribution:DenseVector[Double] = frequency :/ sum(frequency)
+--
+-- }
+
+-- transitionMap :: M
+-- sTransitions:Map[Event, TransitionState] = allStates.transitionMap(state)
+--
+-- case (state, i) =>
+--   state.distribution
+--     .toArray
+--     .view.zipWithIndex
+--     .foldLeft[String]("") {
+--     case (memo, (prob, k)) if prob <= 0 => memo
+--     case (memo, (prob, k)) =>
+--       val symbol:Event = alphabet.raw(k)
+--       sTransitions(symbol) match {
+--         case None => memo
+--         case Some(transition) =>
+--           memo + s"""${idxAsStr(i)} -> ${idxAsStr(allStates.stateMap(transition))} [label = "$symbol: ${"%.7f".format(prob)}"];\n"""
+--       }
+--   }
+

@@ -3,7 +3,7 @@ module CSSR.Algorithm.Phase1Spec (spec) where
 import CSSR.Prelude.Test
 import CSSR.Fixtures (longEP)
 import CSSR.Algorithm.Phase1 (initialization)
-import Data.Alphabet
+import Data.CSSR.Alphabet
 import Data.Tree.Conditional
 import qualified Data.Text as T
 import qualified Data.HashSet as HS

@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: be95b4fa4b394250f795469bc52c02a597b56819d9ae1078f1fc85d9d53388d3
+-- hash: e6b8ca661ea7427b0ebd137191d31d27157a9772a38bc4f28f6d07f92e76742b
 
 name:           cssr
 version:        0.0.0.1
@@ -38,6 +38,7 @@ library
     , microlens
     , microlens-platform
     , primitive
+    , protolude
     , statistics <0.14
     , text
     , unordered-containers
@@ -48,7 +49,6 @@ library
       CSSR.Algorithm.Phase1
       CSSR.Algorithm.Phase2
       CSSR.Algorithm.Phase3
-      CSSR.AllStates
       CSSR.Inferred
       CSSR.Internal
       CSSR.Prelude
@@ -56,18 +56,19 @@ library
       CSSR.Prelude.Vector
       CSSR.Probabilistic
       CSSR.Results
+      CSSR.Results.GraphViz
       CSSR.Statistics.CMu
       CSSR.Statistics.Entropy.Relative
       CSSR.Statistics.Entropy.RelativeRate
       CSSR.Statistics.EntropyRate
       CSSR.Statistics.F1
       CSSR.Statistics.Variation
-      Data.Alphabet
+      Data.CSSR.Alphabet
+      Data.CSSR.State
       Data.List.Set
       Data.MTree.Looping
       Data.MTree.Parse
       Data.Tree.Conditional
-      Data.Tree.Graphviz
       Data.Tree.Internal
       Data.Tree.Looping
       Data.Tree.Parse
@@ -96,7 +97,7 @@ test-suite spec
   hs-source-dirs:
       test
   default-extensions: MultiParamTypeClasses OverloadedStrings PatternSynonyms TypeFamilies ViewPatterns LambdaCase NoImplicitPrelude
-  ghc-options: -Wall -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-unused-top-binds
+  ghc-options: -Wall -Wincomplete-record-updates -Wincomplete-uni-patterns -Wno-unused-matches -Wno-unused-top-binds
   build-depends:
       QuickCheck
     , base

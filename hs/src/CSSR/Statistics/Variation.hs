@@ -1,7 +1,7 @@
 module CSSR.Statistics.Variation where
 
 import CSSR.Prelude
-import CSSR.AllStates (State, terminal)
+import Data.CSSR.State (State, terminal)
 import qualified Data.Tree.Looping as L
 import qualified Data.Vector as V
 import qualified Data.HashMap.Strict as HM (toList)

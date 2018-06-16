@@ -14,7 +14,7 @@ import qualified Data.Vector.Generic as GV
 
 import CSSR.Prelude
 import CSSR.Probabilistic (Probabilistic)
-import Data.Alphabet
+import Data.CSSR.Alphabet
 import qualified CSSR.Probabilistic as Prob
 import qualified Data.Tree.Internal as I
 import qualified Data.Tree.Parse  as P

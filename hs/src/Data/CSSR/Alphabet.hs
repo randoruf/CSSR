@@ -1,12 +1,32 @@
+-------------------------------------------------------------------------------
+-- |
+-- Module    :  Data.CSSR.Alphabet
+-- Copyright :  (c) Sam Stites 2017
+-- License   :  BSD3
+-- Maintainer:  sam@stites.io
+-- Stability :  experimental
+-- Portability: non-portable
+--
+-- Representations of Symbols that CSSR works on and how to build them.
+-------------------------------------------------------------------------------
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
-module Data.Alphabet where
+module Data.CSSR.Alphabet where
+
+import Protolude
+import qualified Prelude as P
+
+import Data.Vector (Vector)
+import Data.Vector.Instances ()
+import Data.HashMap.Strict (HashMap)
+import Data.HashSet (HashSet)
 
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import qualified Data.Vector as V
 
-import CSSR.Prelude
+type Event = Text
+type Symbol = Event
 
 data Alphabet = Alphabet
   { idxToSym :: Vector Event
@@ -27,6 +47,5 @@ instance Show Alphabet where
   -- a little convoluted in the case of strings
   show (Alphabet vec _) = "Alphabet: [" ++ alphaList ++ "]"
     where
-      alphaList :: String
       alphaList = intercalate "," (map show . V.toList $ vec)
 
