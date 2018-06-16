@@ -21,7 +21,7 @@ entropyRate a as =
     go s = foldl' (stateEntRate (toProb s)) 0 (HM.toList (toSDist s))
 
     stateEntRate :: Double -> Double -> (Event, Double) -> Double
-    stateEntRate freq sEntRate (e, p)
-      | p  > 0 = sEntRate + freq * p * logBase 2 p
-      | p <= 0 = sEntRate
+    stateEntRate freq sEntRate (_, p)
+      | p  > 0    = sEntRate + freq * p * logBase 2 p
+      | otherwise = sEntRate
 

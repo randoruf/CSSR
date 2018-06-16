@@ -2,10 +2,8 @@
 module CSSR.AllStates where
 
 import CSSR.Prelude
-import qualified Data.Map as M
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Tree.Looping as L
-import Data.Map (Map)
 
 import Data.Alphabet
 

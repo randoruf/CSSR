@@ -62,7 +62,10 @@ tests:
     dependencies:
       - cssr
       - hspec
+      - text
       - QuickCheck
+      - unordered-containers
+      - vector
 
 benchmarks:
   bench:

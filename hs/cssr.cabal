@@ -1,8 +1,8 @@
--- This file has been generated from package.yaml by hpack version 0.20.0.
+-- This file has been generated from package.yaml by hpack version 0.28.2.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9474347feecefa7bb830d924834ac218b50189546625da25a3dd89b5c685d456
+-- hash: be95b4fa4b394250f795469bc52c02a597b56819d9ae1078f1fc85d9d53388d3
 
 name:           cssr
 version:        0.0.0.1
@@ -102,6 +102,9 @@ test-suite spec
     , base
     , cssr
     , hspec
+    , text
+    , unordered-containers
+    , vector
   other-modules:
       CSSR.Algorithm.Phase1Spec
       CSSR.Algorithm.Phase2Spec
@@ -113,6 +116,7 @@ test-suite spec
       Data.Tree.ConditionalSpec
       Data.Tree.InternalSpec
       Data.Tree.ParseSpec
+      Numeric.CSSR.Internal
       Paths_cssr
   default-language: Haskell2010
 
