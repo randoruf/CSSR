@@ -1,4 +1,6 @@
-resolver: lts-9.6
+resolver: lts-10.9
 flags: {}
 packages:
 - '.'
+extra-deps:
+- statistics-0.13.3.0
