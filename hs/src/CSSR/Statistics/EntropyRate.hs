@@ -7,9 +7,9 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 
 
-entropyRate :: Alphabet -> HashSet State -> Double
+entropyRate :: Alphabet -> AllStates -> Double
 entropyRate a as =
-  (-1) * sum (HS.map go as)
+  (-1) * sum (go <$> as)
   where
     -- FIXME: why is this described as both prob and freq?
     toProb :: State -> Double

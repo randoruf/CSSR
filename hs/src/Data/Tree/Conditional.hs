@@ -169,7 +169,7 @@ showAllObs :: [Leaf] -> String
 showAllObs = T.unpack . T.intercalate "," . fmap (T.concat . V.toList . obs . body)
 
 showAllDists :: [Leaf] -> String
-showAllDists = show . fmap (intercalate "," . V.toList . fmap f'4 . Prob.freqToDist . frequency . body)
+showAllDists = show . fmap (intercalate "," . V.toList . fmap (T.unpack . f'4) . Prob.freqToDist . frequency . body)
 
 
 getDepth :: Tree -> Int -> [Leaf]

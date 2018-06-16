@@ -14,14 +14,10 @@ module Data.CSSR.State where
 
 import Protolude hiding (State, null, Symbol)
 
-import Data.Text (Text)
 import Data.HashMap.Strict (HashMap)
 import Data.HashSet (HashSet)
 import Data.Vector (Vector, (!))
-import GHC.Word (Word)
 
-import qualified Data.Char as C
-import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
@@ -30,7 +26,8 @@ import qualified Data.Tree.Looping as L
 import Data.CSSR.Alphabet
 
 -- | type alias of how CSSR prefers to handle the aggregation of states
-type AllStates = HashSet State
+type AllStates = Vector State
+
 
 -- | A 'State' in CSSR is a terminal leaf and all valid transitions out
 -- of this state into another state.
@@ -54,12 +51,12 @@ transitionTo = flip HM.lookup . transitions
 isRoot :: State -> Bool
 isRoot = V.null . L.path . terminal
 
--- * Distribution-based properties of a state
+-- * Distribution-based properties of all states
 
 -- | Given the alphabet space and all states, return the global frequencies
 -- of each state
-frequency :: Alphabet -> HashSet State -> HashMap State (HashMap Symbol Integer)
-frequency alpha = HM.fromList . toList . HS.map ssize
+frequency :: Alphabet -> AllStates -> HashMap State (HashMap Symbol Integer)
+frequency alpha = HM.fromList . toList . fmap ssize
  where
   ssize :: State -> (State, HashMap Symbol Integer)
   ssize s = (s, HM.map (\i -> freqs ! i) (symToIdx alpha))
@@ -98,32 +95,25 @@ distribution alpha allstates = HM.map ((/total) . fromIntegral) freq
   total :: Double
   total = fromIntegral $ sum (HM.elems freq)
 
+allTransitions :: Alphabet -> AllStates -> HashMap State (HashMap Event (Maybe State))
+allTransitions alpha as =
+  HM.fromList (fulltransitions <$> toList as)
+ where
+   symMap = symToIdx alpha
+   lookupT s k = HM.lookup k (transitions s)
+
+   fulltransitions s = (s, HM.mapWithKey (const . lookupT s) symMap)
+
+allTransitionsLookup :: Alphabet -> AllStates -> State -> HashMap Event (Maybe State)
+allTransitionsLookup alpha as s =
+  HM.lookupDefault (panic "all states should be accounted for") s $
+    allTransitions alpha as
+
 --   val states      = eqClasses.toArray
 --   val transitions:Array[HashMap[Event, TransitionState]] = states.map{ state => transitionHashMap(state) }
 
 --   val stateIndexes:Array[Set[Int]]        = states.map{_.histories.flatHashMap{_.locations.keySet}.toSet}
 --   val stateHashMap:HashMap[State, Int] = states.zipWithIndex.toHashMap
-
---   val frequency:DenseVector[Double]    = new DenseVector[Double](stateIndexes.map{_.size.toDouble})
---   val distribution:DenseVector[Double] = frequency :/ sum(frequency)
---
 -- }
 
--- transitionMap :: M
--- sTransitions:Map[Event, TransitionState] = allStates.transitionMap(state)
---
--- case (state, i) =>
---   state.distribution
---     .toArray
---     .view.zipWithIndex
---     .foldLeft[String]("") {
---     case (memo, (prob, k)) if prob <= 0 => memo
---     case (memo, (prob, k)) =>
---       val symbol:Event = alphabet.raw(k)
---       sTransitions(symbol) match {
---         case None => memo
---         case Some(transition) =>
---           memo + s"""${idxAsStr(i)} -> ${idxAsStr(allStates.stateMap(transition))} [label = "$symbol: ${"%.7f".format(prob)}"];\n"""
---       }
---   }
 

@@ -56,6 +56,7 @@ import Lens.Micro.Platform as X
 import Lens.Micro.Internal as X
 import Prelude             as X hiding (id, head, minimum)
 
+import qualified Data.Text           as T
 import qualified Data.Vector.Generic as GV (Vector)
 import qualified Data.Vector.Unboxed as UV (Vector)
 import qualified Data.Text.Lazy      as LT (Text)
@@ -111,8 +112,8 @@ impossible = error . show
 prettyDecimal :: RealFloat a => Int -> a -> String
 prettyDecimal p f = showFFloat (Just p) f ""
 
-f'4 :: RealFloat a => a -> String
-f'4 = prettyDecimal 4
+f'4 :: RealFloat a => a -> Text
+f'4 = T.pack . prettyDecimal 4
 
 saferBy :: (a -> b) -> (a -> Bool) -> a -> Maybe b
 saferBy get isbad a = if isbad a then Nothing else Just (get a)

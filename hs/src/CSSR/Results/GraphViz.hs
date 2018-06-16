@@ -12,14 +12,21 @@
 -- FIXME: use https://hackage.haskell.org/package/graphviz
 -------------------------------------------------------------------------------
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TupleSections #-}
 module CSSR.Results.GraphViz where
 
-import Protolude
+import Protolude hiding (State, Symbol)
 import Data.Text (Text)
-import Data.Monoid
+import Data.Maybe (fromMaybe)
+import Data.HashSet (HashSet)
+import Data.HashMap.Strict (HashMap)
+import Numeric (showFFloat)
 import qualified Data.Text as T
+import qualified Data.Vector as V
 import qualified Data.Char as C
+import qualified Data.HashMap.Strict as HM
 
+import Data.CSSR.Alphabet
 import Data.CSSR.State
 import qualified Data.CSSR.State as CSSR
 
@@ -36,37 +43,44 @@ dotMeta = T.unlines
 -- | render graphviz
 render
   :: Text  -- ^ file path (possibly "name of task")
-  -> [CSSR.State]
+  -> Alphabet
+  -> StateLabels
+  -> AllStates
   -> Text  -- ^ file as Text
-render fp ss = T.unlines
+render fp a sl ss = T.unlines
   [ "digraph \"" <> fp <> "\" {"
   , dotMeta
-  , dotInfo ss
+  , dotInfo a sl ss
   ]
 
-dotInfo :: [CSSR.State] -> Text
-dotInfo ss
+dotInfo :: Alphabet -> StateLabels -> AllStates -> Text
+dotInfo a sl ss
   = T.unlines
   $ map (uncurry renderState)
-  $ zip [0..] ss
+  $ zip [0..] (toList ss)
  where
   renderState :: StateIx -> CSSR.State -> Text
   renderState ix s = undefined
-      -- case (state, i) =>
-      --   val sTransitions:Map[Event, TransitionState] = allStates.transitionMap(state)
-      --   state.distribution
-      --     .toArray
-      --     .view.zipWithIndex
-      --     .foldLeft[String]("") {
-      --     case (memo, (prob, k)) if prob <= 0 => memo
-      --     case (memo, (prob, k)) =>
-      --       val symbol:Event = alphabet.raw(k)
-      --       sTransitions(symbol) match {
-      --         case None => memo
-      --         case Some(transition) =>
-      --           memo + s"""${idxAsStr(i)} -> ${idxAsStr(allStates.stateMap(transition))} [label = "$symbol: ${"%.7f".format(prob)}"];\n"""
-      --       }
-      --   }
+    where
+      sTransitions :: HashMap Event (Maybe CSSR.State)
+      sTransitions = allTransitionsLookup a ss s
+
+      sDist :: HashMap Event (Double, StateIx)
+      sDist = HM.mapMaybeWithKey getTransition (distributionsLookup a ss s)
+
+      getTransition :: Event -> Double -> Maybe (Double, StateIx)
+      getTransition e p
+        | p <= 0    = Nothing
+        | otherwise = (p,) <$> (join (HM.lookup e sTransitions) >>= getIx ss)
+
+      renderDist :: HashMap Event (Double, StateIx) -> [Text]
+      renderDist d = go <$> HM.toList d
+        where
+          go :: (Event, (Double, StateIx)) -> Text
+          go (evt, (p, s)) = T.concat
+            [ labelState ix sl, " -> ", labelState s sl
+            , "[label = ", evt, ": ", T.pack $ showFFloat (Just 4) p "", "];"
+            ]
 
 -- | Word representation of a state's index
 newtype StateIx = StateIx { unStateIx :: Word }
@@ -86,4 +100,5 @@ labelState ix = \case
   intToAscii :: StateIx -> Text
   intToAscii = T.singleton . C.intToDigit . fromIntegral . (+ 17)
 
-
+getIx :: AllStates -> State -> Maybe StateIx
+getIx ss s = fromIntegral <$> (V.findIndex (== s) ss)

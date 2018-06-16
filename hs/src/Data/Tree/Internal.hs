@@ -173,7 +173,7 @@ showLeafM tohists todists tochilds pre st l = T.unpack <$> go 0 (T.concat $ V.to
     , T.pack (show e), "->", pre <> "Leaf{"
     , if isloop then "Loop(" else "", "obs: ", showList T.concat hs, if isloop then ")" else ""
     , if isloop then ""      else ", freq: " <> showList (num2txt show) fs
-    , if isloop then ""      else ", dist: " <> showList (num2txt f'4) (fmap Prob.freqToDist fs)
+    , if isloop then ""      else ", dist: " <> showList (num2txt (T.unpack . f'4)) (fmap Prob.freqToDist fs)
     , if isloop || hasCs then "}" else ", no children}"
     ]
 

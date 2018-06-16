@@ -9,7 +9,6 @@ import qualified Data.Tree.Conditional as Cond
 import qualified Data.Tree.Looping as L
 import qualified Data.Vector as V
 import qualified Data.HashMap.Strict as HM
-import qualified Data.HashSet as HS
 
 type LLeaf = L.Leaf
 
@@ -22,8 +21,8 @@ inferredDistribution tree@Cond.Tree{Cond.depth} d allstates =
 
 -- | calculates the probability of a single, raw history (in string form) based on a given
 -- allStates and alphabet
-inferredProb :: Cond.Tree -> HashSet State -> Vector Event -> Double
-inferredProb tree allstates hist = sum . toList . HS.map totalPerString $ allstates
+inferredProb :: Cond.Tree -> AllStates -> Vector Event -> Double
+inferredProb tree allstates hist = sum (totalPerString <$> allstates)
  where
   dist :: State -> HashMap Event Double
   dist = distributionsLookup (Cond.alphabet tree) allstates
