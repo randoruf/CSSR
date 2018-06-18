@@ -13,13 +13,11 @@
 -------------------------------------------------------------------------------
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TupleSections #-}
-module CSSR.Results.GraphViz where
+module Numeric.CSSR.Results.GraphViz where
 
 import Protolude hiding (State, Symbol)
 import qualified Prelude as P
 import Data.Text (Text)
--- import Data.Maybe (fromMaybe)
--- import Data.HashSet (HashSet)
 import Data.Vector (Vector)
 import Data.HashMap.Strict (HashMap)
 import Numeric (showFFloat)

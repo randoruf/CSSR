@@ -22,7 +22,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
-module CSSR.Algorithm.Phase2 where
+module Numeric.CSSR.Algorithm.Phase2 where
 
 import qualified Data.Sequence as S
 import qualified Data.HashTable.Class as H

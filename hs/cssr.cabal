@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e6b8ca661ea7427b0ebd137191d31d27157a9772a38bc4f28f6d07f92e76742b
+-- hash: ecbfc7c1ded56e88dc651c6bc2b6805f24a767c8f60abc221d65a9ab8ffbb703
 
 name:           cssr
 version:        0.0.0.1
@@ -45,24 +45,12 @@ library
     , vector
     , vector-instances
   exposed-modules:
-      CSSR
-      CSSR.Algorithm.Phase1
-      CSSR.Algorithm.Phase2
-      CSSR.Algorithm.Phase3
       CSSR.Inferred
       CSSR.Internal
       CSSR.Prelude
       CSSR.Prelude.Mutable
       CSSR.Prelude.Vector
       CSSR.Probabilistic
-      CSSR.Results
-      CSSR.Results.GraphViz
-      CSSR.Statistics.CMu
-      CSSR.Statistics.Entropy.Relative
-      CSSR.Statistics.Entropy.RelativeRate
-      CSSR.Statistics.EntropyRate
-      CSSR.Statistics.F1
-      CSSR.Statistics.Variation
       Data.CSSR.Alphabet
       Data.CSSR.State
       Data.List.Set
@@ -72,6 +60,18 @@ library
       Data.Tree.Internal
       Data.Tree.Looping
       Data.Tree.Parse
+      Numeric.CSSR
+      Numeric.CSSR.Algorithm.Phase1
+      Numeric.CSSR.Algorithm.Phase2
+      Numeric.CSSR.Algorithm.Phase3
+      Numeric.CSSR.Internal
+      Numeric.CSSR.Results
+      Numeric.CSSR.Results.GraphViz
+      Numeric.CSSR.Statistics
+      Numeric.CSSR.Statistics.Entropy.Rate
+      Numeric.CSSR.Statistics.Entropy.Relative
+      Numeric.CSSR.Statistics.Entropy.Relative.Rate
+      Numeric.CSSR.Statistics.F1
   other-modules:
       Paths_cssr
   default-language: Haskell2010

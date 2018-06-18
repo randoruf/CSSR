@@ -1,4 +1,4 @@
-module CSSR.Statistics.EntropyRate where
+module Numeric.CSSR.Statistics.Entropy.Rate where
 
 import CSSR.Prelude
 import Data.CSSR.State

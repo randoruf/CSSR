@@ -1,4 +1,4 @@
-module CSSR.Results where
+module Numeric.CSSR.Results where
 
 import Protolude hiding (State)
 import Data.Vector (Vector)
@@ -8,18 +8,18 @@ import Control.Arrow ((&&&))
 import System.Directory (getCurrentDirectory)
 import Data.Maybe (fromJust)
 import Lens.Micro.Platform
-
-import Data.CSSR.Alphabet
-import Data.CSSR.State hiding (transitions)
 import qualified Prelude as P
 import qualified Data.Text as T
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
-import qualified Data.CSSR.State as CSSR
+
+import Data.CSSR.Alphabet
+import Data.CSSR.State hiding (transitions)
 import Data.Tree.Conditional as Cond
 import Data.Tree.Looping as Loop
-
-import CSSR.Results.GraphViz (getIx, StateIx)
+import Numeric.CSSR.Results.GraphViz (getIx, StateIx)
+import qualified Data.CSSR.Alphabet as Alphabet
+import qualified Numeric.CSSR.Statistics as Stats
 
 -- | All top-level CSSR metadata (FIXME: should be used in the CLI)
 data Metadata = Metadata
@@ -126,13 +126,6 @@ mkStateDetails a states
   $ map (show . mkDetail a states)
   $ toList states
 
---  where
---   terminalHists :: State -> HashSet Cond.Leaf
---   terminalHists = view (Loop.bodyL . _Right . Loop.historiesL) . terminal
-
---   stateFreq :: State -> Text
---   stateFreq = renderDist show . frequencyLookup a states
-
 
 -- | Reported results from CSSR
 data Results = Results
@@ -161,6 +154,29 @@ instance Show Results where
     ]
 
 -- | Smart constructor for CSSR results
-mkResults :: Alphabet -> Bool -> Bool -> AllStates -> Results
-mkResults alphabet tree machine allStates = undefined
+mkResults :: Alphabet -> Word -> Bool -> AllStates -> Results
+mkResults a adjustedSize machine states =
+  Results
+    (Alphabet.size a)
 
+    adjustedSize
+
+    -- relativeEntropy :: InferredDistribution -> Double -> Double
+    (Stats.relativeEntropy undefined sz)
+
+    -- FIXME: there is no function here
+    0
+
+    -- cMu :: forall f . (Num f, Floating f) => Vector f -> f
+    (Stats.cMu undefined)
+
+    -- entropyRate :: Alphabet -> AllStates -> Double
+    (Stats.entropyRate a states)
+
+    -- variation :: HashMap State Double -> Double -> Double
+    (Stats.variation (distribution a states) sz)
+
+    (fromIntegral $ HS.size states)
+  where
+    sz :: Double
+    sz = fromIntegral adjustedSize

@@ -41,8 +41,8 @@ mkAlphabet alphas = Alphabet (V.fromList list) (HM.fromList $ zip list [0..])
     list :: [Event]
     list = toList alphas
 
-size :: Alphabet -> Int
-size = V.length . idxToSym
+size :: Alphabet -> Word
+size = fromIntegral . V.length . idxToSym
 
 instance Show Alphabet where
   -- a little convoluted in the case of strings

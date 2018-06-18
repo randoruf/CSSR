@@ -12,7 +12,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 module Data.CSSR.State where
 
-import Protolude hiding (State, null, Symbol)
+import Protolude hiding (State, Symbol)
 
 import Data.HashMap.Strict (HashMap)
 import Data.HashSet (HashSet)
@@ -29,11 +29,11 @@ import Data.CSSR.Alphabet
 type AllStates = HashSet State
 
 
--- | A 'State' in CSSR is a terminal leaf and all valid transitions out
--- of this state into another state.
+-- | A 'State' in CSSR is a group of terminal leaves, which form an equivalence
+-- class, and all valid transitions out of the state into another state.
 data State = State
   { transitions :: HashMap Event State
-  , terminal :: L.Leaf
+  , terminal :: L.Leaf -- ^ FIXME: this should be @HashSet L.Leaf@ which form an eq-class
   } deriving (Show, Eq)
 
 instance Hashable State where

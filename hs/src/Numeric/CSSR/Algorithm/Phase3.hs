@@ -45,7 +45,7 @@
 -------------------------------------------------------------------------------
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module CSSR.Algorithm.Phase3 where
+module Numeric.CSSR.Algorithm.Phase3 where
 
 import Data.CSSR.Alphabet
 import CSSR.Prelude.Mutable

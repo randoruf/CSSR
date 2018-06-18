@@ -3,12 +3,12 @@
 -- The CSSR Algorithm. This module exemplifies how the components of CSSR
 -- connect together into a cohesive algorithm
 -------------------------------------------------------------------------------
-module CSSR (cssr) where
+module Numeric.CSSR (cssr) where
 
 import CSSR.Prelude
-import CSSR.Algorithm.Phase1 (initialization)
-import CSSR.Algorithm.Phase2 (grow)
-import CSSR.Algorithm.Phase3 (refine)
+import Numeric.CSSR.Algorithm.Phase1 (initialization)
+import Numeric.CSSR.Algorithm.Phase2 (grow)
+import Numeric.CSSR.Algorithm.Phase3 (refine)
 import Data.MTree.Looping as ML
 import Data.Tree.Conditional as Cond
 import Control.Monad.ST

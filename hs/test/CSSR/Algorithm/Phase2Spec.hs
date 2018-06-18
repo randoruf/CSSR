@@ -9,8 +9,8 @@ import qualified Data.Vector as V
 import qualified Data.HashMap.Strict as HM
 
 import CSSR.Fixtures (longEP)
-import CSSR.Algorithm.Phase1 (initialization)
-import CSSR.Algorithm.Phase2 (grow)
+import Numeric.CSSR.Algorithm.Phase1 (initialization)
+import Numeric.CSSR.Algorithm.Phase2 (grow)
 
 import qualified CSSR.Probabilistic as Prob
 import qualified Data.Tree.Conditional as Cond

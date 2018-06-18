@@ -3,9 +3,9 @@ module CSSR.InternalSpec where
 import CSSR.Prelude.Test
 import CSSR.Prelude.Mutable
 
-import CSSR.Algorithm.Phase1 (initialization)
-import CSSR.Algorithm.Phase2 (grow)
-import CSSR.Algorithm.Phase3 (refine)
+import Numeric.CSSR.Algorithm.Phase1 (initialization)
+import Numeric.CSSR.Algorithm.Phase2 (grow)
+import Numeric.CSSR.Algorithm.Phase3 (refine)
 
 import qualified Data.Tree.Conditional as Cond
 import qualified Data.Tree.Looping as L

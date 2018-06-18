@@ -1,4 +1,4 @@
-module CSSR.Statistics.Entropy.RelativeRate where
+module Numeric.CSSR.Statistics.Entropy.Relative.Rate where
 
 import CSSR.Prelude
 import qualified Data.Tree.Conditional as Cond

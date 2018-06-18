@@ -5,7 +5,7 @@
 -- Requires estimates of conditional probabilities to converge, perhaps rapidly.
 --
 -------------------------------------------------------------------------------
-module CSSR.Algorithm.Phase1 where
+module Numeric.CSSR.Algorithm.Phase1 where
 
 import CSSR.Prelude
 import qualified Data.Text    as T (singleton)
