@@ -19,6 +19,7 @@ import Protolude hiding (State, Symbol)
 import Data.Text (Text)
 import Data.Maybe (fromMaybe)
 import Data.HashSet (HashSet)
+import Data.Vector (Vector)
 import Data.HashMap.Strict (HashMap)
 import Numeric (showFFloat)
 import qualified Data.Text as T
@@ -56,23 +57,14 @@ render fp a sl ss = T.unlines
 dotInfo :: Alphabet -> StateLabels -> AllStates -> Text
 dotInfo a sl ss
   = T.unlines
-  $ map (uncurry renderState)
-  $ zip [0..] (toList ss)
+  $ zipWith renderState [0..] (toList ss)
  where
+  vs :: Vector State
+  vs = V.fromList $ toList ss
+
   renderState :: StateIx -> CSSR.State -> Text
-  renderState ix s = undefined
+  renderState ix s = T.unlines $ renderDist sDist
     where
-      sTransitions :: HashMap Event (Maybe CSSR.State)
-      sTransitions = allTransitionsLookup a ss s
-
-      sDist :: HashMap Event (Double, StateIx)
-      sDist = HM.mapMaybeWithKey getTransition (distributionsLookup a ss s)
-
-      getTransition :: Event -> Double -> Maybe (Double, StateIx)
-      getTransition e p
-        | p <= 0    = Nothing
-        | otherwise = (p,) <$> (join (HM.lookup e sTransitions) >>= getIx ss)
-
       renderDist :: HashMap Event (Double, StateIx) -> [Text]
       renderDist d = go <$> HM.toList d
         where
@@ -81,6 +73,18 @@ dotInfo a sl ss
             [ labelState ix sl, " -> ", labelState s sl
             , "[label = ", evt, ": ", T.pack $ showFFloat (Just 4) p "", "];"
             ]
+
+      sDist :: HashMap Event (Double, StateIx)
+      sDist = HM.mapMaybeWithKey getTransition (distributionsLookup a ss s)
+
+      getTransition :: Event -> Double -> Maybe (Double, StateIx)
+      getTransition e p
+        | p <= 0    = Nothing
+        | otherwise = (p,) <$> (join (HM.lookup e sTransitions) >>= getIx vs)
+
+      sTransitions :: HashMap Event (Maybe CSSR.State)
+      sTransitions = allTransitionsLookup a ss s
+
 
 -- | Word representation of a state's index
 newtype StateIx = StateIx { unStateIx :: Word }
@@ -100,5 +104,6 @@ labelState ix = \case
   intToAscii :: StateIx -> Text
   intToAscii = T.singleton . C.intToDigit . fromIntegral . (+ 17)
 
-getIx :: AllStates -> State -> Maybe StateIx
-getIx ss s = fromIntegral <$> (V.findIndex (== s) ss)
+getIx :: V.Vector State -> State -> Maybe StateIx
+getIx ss s = fromIntegral <$> V.findIndex (== s) ss
+

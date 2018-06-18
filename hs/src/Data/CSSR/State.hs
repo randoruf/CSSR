@@ -26,7 +26,7 @@ import qualified Data.Tree.Looping as L
 import Data.CSSR.Alphabet
 
 -- | type alias of how CSSR prefers to handle the aggregation of states
-type AllStates = Vector State
+type AllStates = HashSet State
 
 
 -- | A 'State' in CSSR is a terminal leaf and all valid transitions out
@@ -56,7 +56,7 @@ isRoot = V.null . L.path . terminal
 -- | Given the alphabet space and all states, return the global frequencies
 -- of each state
 frequency :: Alphabet -> AllStates -> HashMap State (HashMap Symbol Integer)
-frequency alpha = HM.fromList . toList . fmap ssize
+frequency alpha = HM.fromList . toList . HS.map ssize
  where
   ssize :: State -> (State, HashMap Symbol Integer)
   ssize s = (s, HM.map (\i -> freqs ! i) (symToIdx alpha))
