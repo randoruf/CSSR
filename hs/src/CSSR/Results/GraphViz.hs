@@ -46,7 +46,7 @@ render
   :: Text  -- ^ file path (possibly "name of task")
   -> Alphabet
   -> StateLabels
-  -> AllStates
+  -> Vector State
   -> Text  -- ^ file as Text
 render fp a sl ss = T.unlines
   [ "digraph \"" <> fp <> "\" {"
@@ -54,7 +54,7 @@ render fp a sl ss = T.unlines
   , dotInfo a sl ss
   ]
 
-dotInfo :: Alphabet -> StateLabels -> AllStates -> Text
+dotInfo :: Alphabet -> StateLabels -> Vector State -> Text
 dotInfo a sl ss
   = T.unlines
   $ zipWith renderState [0..] (toList ss)

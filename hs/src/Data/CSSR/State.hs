@@ -55,8 +55,8 @@ isRoot = V.null . L.path . terminal
 
 -- | Given the alphabet space and all states, return the global frequencies
 -- of each state
-frequency :: Alphabet -> AllStates -> HashMap State (HashMap Symbol Integer)
-frequency alpha = HM.fromList . toList . HS.map ssize
+frequency :: Foldable f => Alphabet -> f State -> HashMap State (HashMap Symbol Integer)
+frequency alpha = HM.fromList . fmap ssize . toList
  where
   ssize :: State -> (State, HashMap Symbol Integer)
   ssize s = (s, HM.map (\i -> freqs ! i) (symToIdx alpha))
@@ -67,7 +67,7 @@ frequency alpha = HM.fromList . toList . HS.map ssize
     tofreqs :: Either L.Leaf L.LeafBody -> Vector Integer
     tofreqs = either (panic "states do not loop") L.frequency
 
-distributions :: Alphabet -> AllStates -> HashMap State (HashMap Symbol Double)
+distributions :: Foldable f => Alphabet -> f State -> HashMap State (HashMap Symbol Double)
 distributions alpha allstates = HM.fromList $ map toprobs freq
   where
     freq :: [(State, HashMap Symbol Integer)]
@@ -76,17 +76,12 @@ distributions alpha allstates = HM.fromList $ map toprobs freq
     toprobs :: (State, HashMap Symbol Integer) -> (State, HashMap Symbol Double)
     toprobs (s, hms) = (s, HM.map ((/ (fromIntegral . sum . HM.elems $ hms)) . fromIntegral) hms)
 
-distributionsLookup :: Alphabet -> AllStates -> State -> HashMap Event Double
+distributionsLookup :: Foldable f => Alphabet -> f State -> State -> HashMap Event Double
 distributionsLookup alpha allstates s =
   HM.lookupDefault (panic "all states should be accounted for") s $
     distributions alpha allstates
 
-distributionLookup :: Alphabet -> AllStates -> State -> Double
-distributionLookup alpha allstates s =
-  HM.lookupDefault (panic "all symbols should be accounted for") s $
-    distribution alpha allstates
-
-distribution :: Alphabet -> AllStates -> HashMap State Double
+distribution :: Foldable f => Alphabet -> f State -> HashMap State Double
 distribution alpha allstates = HM.map ((/total) . fromIntegral) freq
  where
   freq :: HashMap State Integer
@@ -95,7 +90,12 @@ distribution alpha allstates = HM.map ((/total) . fromIntegral) freq
   total :: Double
   total = fromIntegral $ sum (HM.elems freq)
 
-allTransitions :: Alphabet -> AllStates -> HashMap State (HashMap Event (Maybe State))
+distributionLookup :: Foldable f => Alphabet -> f State -> State -> Double
+distributionLookup alpha allstates s =
+  HM.lookupDefault (panic "all symbols should be accounted for") s $
+    distribution alpha allstates
+
+allTransitions :: Foldable f => Alphabet -> f State -> HashMap State (HashMap Event (Maybe State))
 allTransitions alpha as =
   HM.fromList (fulltransitions <$> toList as)
  where
@@ -104,7 +104,7 @@ allTransitions alpha as =
 
    fulltransitions s = (s, HM.mapWithKey (const . lookupT s) symMap)
 
-allTransitionsLookup :: Alphabet -> AllStates -> State -> HashMap Event (Maybe State)
+allTransitionsLookup :: Foldable f => Alphabet -> f State -> State -> HashMap Event (Maybe State)
 allTransitionsLookup alpha as s =
   HM.lookupDefault (panic "all states should be accounted for") s $
     allTransitions alpha as

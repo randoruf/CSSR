@@ -3,6 +3,8 @@ module CSSR.Results where
 import Protolude
 import System.Directory (getCurrentDirectory)
 
+import Data.CSSR.Alphabet
+import Data.CSSR.State
 import qualified Prelude as P
 import qualified Data.Text as T
 
@@ -89,10 +91,10 @@ instance Show Results where
     ]
 
 -- | Smart constructor for CSSR results
-mkResults :: Bool -> Bool -> Bool -> Bool -> Results
+mkResults :: Alphabet -> Bool -> Bool -> AllStates -> Results
 mkResults alphabet tree machine allStates = undefined
 
-mkStateDetails :: Bool -> Text
+mkStateDetails :: AllStates -> Text
 mkStateDetails allStates = undefined
 --   val stateDetails: String = allStates.states
 --     .view
