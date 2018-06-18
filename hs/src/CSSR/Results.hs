@@ -2,6 +2,7 @@ module CSSR.Results where
 
 import Protolude hiding (State)
 import Data.Vector (Vector)
+import Data.HashSet (HashSet)
 import Data.HashMap.Strict (HashMap)
 import Control.Arrow ((&&&))
 import System.Directory (getCurrentDirectory)
@@ -9,11 +10,12 @@ import Data.Maybe (fromJust)
 import Lens.Micro.Platform
 
 import Data.CSSR.Alphabet
-import Data.CSSR.State
+import Data.CSSR.State hiding (transitions)
 import qualified Prelude as P
 import qualified Data.Text as T
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
+import qualified Data.CSSR.State as CSSR
 import Data.Tree.Conditional as Cond
 import Data.Tree.Looping as Loop
 
@@ -75,6 +77,63 @@ mkMetadata a d len del sig label o dbug = do
     , debug = dbug
     }
 
+data Detail = Detail
+  { detailIx :: StateIx
+  , observations :: HashSet (Vector Event)
+  , probDist :: HashMap Event Double
+  , freqDist :: HashMap Event Integer
+  , transitions :: Vector (State, HashMap Event (Maybe StateIx))
+  , probState :: Double
+  }
+
+instance Show Detail where
+  show d = T.unpack . T.unlines $
+    [ show (detailIx d) <> ":" ]
+    <> map show (toList (observations d)) <>
+    [ "Probability Dist: " <> renderDist show (probDist d)
+    , "  Frequency Dist: " <> renderDist show (freqDist d)
+    , "     transitions: " <> show (transitions d)
+    , "        P(state): " <> show (probState d)
+    ]
+   where
+    renderDist :: (n -> Text) -> HashMap Event n -> Text
+    renderDist repr = T.intercalate "," . map repr . toList
+
+
+mkDetail :: Alphabet -> Vector State -> State -> Detail
+mkDetail a states s =
+  Detail
+    (getIx' s)
+    (HS.map (Cond.obs . Cond.body) $ terminalHists s)
+    (distributionsLookup a states s)
+    (frequencyLookup a states s)
+    ((identity &&& HM.map (maybe Nothing (getIx states)) . toTs) <$> states)
+    (distributionLookup a states s)
+ where
+  getIx' :: State -> StateIx
+  getIx' = fromJust (panic "all states accounted for in results") (getIx states)
+
+  terminalHists :: State -> HashSet Cond.Leaf
+  terminalHists = view (Loop.bodyL . _Right . Loop.historiesL) . terminal
+
+  toTs :: State -> HashMap Event (Maybe State)
+  toTs = allTransitionsLookup a states
+
+
+mkStateDetails :: Alphabet -> Vector State -> Text
+mkStateDetails a states
+  = T.unlines
+  $ map (show . mkDetail a states)
+  $ toList states
+
+--  where
+--   terminalHists :: State -> HashSet Cond.Leaf
+--   terminalHists = view (Loop.bodyL . _Right . Loop.historiesL) . terminal
+
+--   stateFreq :: State -> Text
+--   stateFreq = renderDist show . frequencyLookup a states
+
+
 -- | Reported results from CSSR
 data Results = Results
   { alphabetSize :: Word
@@ -104,47 +163,4 @@ instance Show Results where
 -- | Smart constructor for CSSR results
 mkResults :: Alphabet -> Bool -> Bool -> AllStates -> Results
 mkResults alphabet tree machine allStates = undefined
-
-mkStateDetails :: Alphabet -> Vector State -> Text
-mkStateDetails a states
-  = T.unlines
-  $ map oneStateDetails
-  $ toList states
-
- where
-  getIx' :: State -> Maybe StateIx
-  getIx' = fromJust (panic "all states accounted for in results") (getIx states)
-
-  terminalHists :: State -> HS.HashSet Cond.Leaf
-  terminalHists = view (Loop.bodyL . _Right . Loop.historiesL) . terminal
-
-  oneStateDetails :: State -> Text
-  oneStateDetails s = T.unlines $
-    [ show (getIx' s) <> ":" ]
-    <> toList (HS.map (show . Cond.obs . Cond.body) $ terminalHists s) <>
-    [ "Probability Dist: " <> stateDist s
-    , "  Frequency Dist: " <> stateFreq s
-    , "        Alphabet: " <> alphaList a
-    , "     transitions: " <> show ts
-    , "        P(state): " <> stateProb s
-    ]
-
-  ts :: Vector (State, HashMap Event (Maybe StateIx))
-  ts = (identity &&& HM.map (maybe Nothing (getIx states)) . toTs) <$> states
-
-  renderDist :: (n -> Text) -> HashMap Event n -> Text
-  renderDist repr = T.intercalate "," . map repr . toList
-
-  toTs :: State -> HashMap Event (Maybe State)
-  toTs = allTransitionsLookup a states
-
-  stateFreq :: State -> Text
-  stateFreq = renderDist show . frequencyLookup a states
-
-  stateDist :: State -> Text
-  stateDist = renderDist show . distributionsLookup a states
-
-  stateProb :: State -> Text
-  stateProb = show . distributionLookup a states
-
 
