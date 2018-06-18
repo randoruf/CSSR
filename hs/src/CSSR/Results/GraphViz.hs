@@ -16,9 +16,10 @@
 module CSSR.Results.GraphViz where
 
 import Protolude hiding (State, Symbol)
+import qualified Prelude as P
 import Data.Text (Text)
-import Data.Maybe (fromMaybe)
-import Data.HashSet (HashSet)
+-- import Data.Maybe (fromMaybe)
+-- import Data.HashSet (HashSet)
 import Data.Vector (Vector)
 import Data.HashMap.Strict (HashMap)
 import Numeric (showFFloat)
@@ -88,7 +89,10 @@ dotInfo a sl ss
 
 -- | Word representation of a state's index
 newtype StateIx = StateIx { unStateIx :: Word }
-  deriving (Num, Real, Ord, Integral, Show, Bounded, Enum, Eq)
+  deriving (Num, Real, Ord, Integral, Bounded, Enum, Eq)
+
+instance Show StateIx where
+  show = ("State " ++) . show . unStateIx
 
 -- | Which style of label we would like to use
 data StateLabels

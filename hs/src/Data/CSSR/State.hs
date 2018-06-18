@@ -67,6 +67,11 @@ frequency alpha = HM.fromList . fmap ssize . toList
     tofreqs :: Either L.Leaf L.LeafBody -> Vector Integer
     tofreqs = either (panic "states do not loop") L.frequency
 
+frequencyLookup :: Foldable f => Alphabet -> f State -> State -> HashMap Event Integer
+frequencyLookup alpha allstates s =
+  HM.lookupDefault (panic "all states should be accounted for") s $
+    frequency alpha allstates
+
 distributions :: Foldable f => Alphabet -> f State -> HashMap State (HashMap Symbol Double)
 distributions alpha allstates = HM.fromList $ map toprobs freq
   where

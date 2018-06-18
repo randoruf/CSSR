@@ -1,12 +1,23 @@
 module CSSR.Results where
 
-import Protolude
+import Protolude hiding (State)
+import Data.Vector (Vector)
+import Data.HashMap.Strict (HashMap)
+import Control.Arrow ((&&&))
 import System.Directory (getCurrentDirectory)
+import Data.Maybe (fromJust)
+import Lens.Micro.Platform
 
 import Data.CSSR.Alphabet
 import Data.CSSR.State
 import qualified Prelude as P
 import qualified Data.Text as T
+import qualified Data.HashMap.Strict as HM
+import qualified Data.HashSet as HS
+import Data.Tree.Conditional as Cond
+import Data.Tree.Looping as Loop
+
+import CSSR.Results.GraphViz (getIx, StateIx)
 
 -- | All top-level CSSR metadata (FIXME: should be used in the CLI)
 data Metadata = Metadata
@@ -94,24 +105,46 @@ instance Show Results where
 mkResults :: Alphabet -> Bool -> Bool -> AllStates -> Results
 mkResults alphabet tree machine allStates = undefined
 
-mkStateDetails :: AllStates -> Text
-mkStateDetails allStates = undefined
---   val stateDetails: String = allStates.states
---     .view
---     .zipWithIndex
---     .map {
---       case eqClass, i =>
---         val transitions = allStates.transitionsi
---           .map{ case c, s => c -> s.flatMap{ s=> Option("State " + idxAsStr(allStates.stateMap(s)))} }
---
---         s"State ${idxAsStri}:\n" +
---           eqClass.histories.toArray.sortBy_.observed.mkString("").map{_.toString}.mkString("\n") +
---           s"""
---              |Probability Dist: ${eqClass.distribution.toString}
---              |  Frequency Dist: ${eqClass.frequency.toString}
---              |        Alphabet: ${alphabet.toString}
---              |     transitions: $transitions
---              |        Pstate: ${allStates.distribution(i)}
---              |""".stripMargin
---     }
---     .mkString"\n"
+mkStateDetails :: Alphabet -> Vector State -> Text
+mkStateDetails a states
+  = T.unlines
+  $ map oneStateDetails
+  $ toList states
+
+ where
+  getIx' :: State -> Maybe StateIx
+  getIx' = fromJust (panic "all states accounted for in results") (getIx states)
+
+  terminalHists :: State -> HS.HashSet Cond.Leaf
+  terminalHists = view (Loop.bodyL . _Right . Loop.historiesL) . terminal
+
+  oneStateDetails :: State -> Text
+  oneStateDetails s = T.unlines $
+    [ show (getIx' s) <> ":" ]
+    <> toList (HS.map (show . Cond.obs . Cond.body) $ terminalHists s) <>
+    [ "Probability Dist: " <> stateDist s
+    , "  Frequency Dist: " <> stateFreq s
+    , "        Alphabet: " <> alphaList a
+    , "     transitions: " <> show ts
+    , "        P(state): " <> stateProb s
+    ]
+
+  ts :: Vector (State, HashMap Event (Maybe StateIx))
+  ts = (identity &&& HM.map (maybe Nothing (getIx states)) . toTs) <$> states
+
+  renderDist :: (n -> Text) -> HashMap Event n -> Text
+  renderDist repr = T.intercalate "," . map repr . toList
+
+  toTs :: State -> HashMap Event (Maybe State)
+  toTs = allTransitionsLookup a states
+
+  stateFreq :: State -> Text
+  stateFreq = renderDist show . frequencyLookup a states
+
+  stateDist :: State -> Text
+  stateDist = renderDist show . distributionsLookup a states
+
+  stateProb :: State -> Text
+  stateProb = show . distributionLookup a states
+
+

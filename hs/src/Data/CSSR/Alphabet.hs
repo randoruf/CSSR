@@ -24,6 +24,7 @@ import Data.HashSet (HashSet)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import qualified Data.Vector as V
+import qualified Data.Text as T
 
 type Event = Text
 type Symbol = Event
@@ -38,14 +39,15 @@ mkAlphabet :: HashSet Event -> Alphabet
 mkAlphabet alphas = Alphabet (V.fromList list) (HM.fromList $ zip list [0..])
   where
     list :: [Event]
-    list = HS.toList alphas
+    list = toList alphas
 
 size :: Alphabet -> Int
 size = V.length . idxToSym
 
 instance Show Alphabet where
   -- a little convoluted in the case of strings
-  show (Alphabet vec _) = "Alphabet: [" ++ alphaList ++ "]"
-    where
-      alphaList = intercalate "," (map show . V.toList $ vec)
+  show a = "Alphabet: [" ++ T.unpack (alphaList a) ++ "]"
+
+alphaList :: Alphabet -> Text
+alphaList = T.intercalate "," . map show . toList . idxToSym
 
