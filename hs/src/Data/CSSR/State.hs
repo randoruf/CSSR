@@ -28,6 +28,8 @@ import Data.CSSR.Alphabet
 -- | type alias of how CSSR prefers to handle the aggregation of states
 type AllStates = HashSet State
 
+asVec :: HashSet State -> Vector State
+asVec = V.fromList . toList
 
 -- | A 'State' in CSSR is a group of terminal leaves, which form an equivalence
 -- class, and all valid transitions out of the state into another state.
@@ -104,9 +106,13 @@ allTransitions :: Foldable f => Alphabet -> f State -> HashMap State (HashMap Ev
 allTransitions alpha as =
   HM.fromList (fulltransitions <$> toList as)
  where
+   symMap :: HashMap Event Int
    symMap = symToIdx alpha
+
+   lookupT :: State -> Event -> Maybe State
    lookupT s k = HM.lookup k (transitions s)
 
+   fulltransitions :: State -> (State, HashMap Event (Maybe State))
    fulltransitions s = (s, HM.mapWithKey (const . lookupT s) symMap)
 
 allTransitionsLookup :: Foldable f => Alphabet -> f State -> State -> HashMap Event (Maybe State)

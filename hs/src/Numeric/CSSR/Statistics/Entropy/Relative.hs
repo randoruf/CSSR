@@ -3,7 +3,7 @@ module Numeric.CSSR.Statistics.Entropy.Relative where
 import CSSR.Prelude
 import qualified Data.Tree.Conditional as Cond
 
-import Numeric.CSSR.Internal
+import Numeric.CSSR.Inferred
 
 -- calculates the probability of all the max length strings in the
 -- data based on the inferred machine:

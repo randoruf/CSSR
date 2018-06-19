@@ -82,6 +82,8 @@ lobsL = bodyL . obsL
 lfrequencyL :: Lens' Leaf (Vector Integer)
 lfrequencyL = bodyL . frequencyL
 
+total :: Leaf -> Integer
+total = V.sum . view lfrequencyL
 
 instance Probabilistic Leaf where
   frequency = GV.convert . view (bodyL . frequencyL)
