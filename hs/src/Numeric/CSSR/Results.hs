@@ -12,11 +12,13 @@ import qualified Prelude as P
 import qualified Data.Text as T
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
+import qualified Data.Vector as V
 
 import Data.CSSR.Alphabet
 import Data.CSSR.State hiding (transitions)
 import Data.Tree.Conditional as Cond
 import Data.Tree.Looping as Loop
+import Numeric.CSSR.Inferred
 import Numeric.CSSR.Results.GraphViz (getIx, StateIx)
 import qualified Data.CSSR.Alphabet as Alphabet
 import qualified Numeric.CSSR.Statistics as Stats
@@ -154,29 +156,23 @@ instance Show Results where
     ]
 
 -- | Smart constructor for CSSR results
-mkResults :: Alphabet -> Word -> Bool -> AllStates -> Results
-mkResults a adjustedSize machine states =
+mkResults :: Alphabet -> Word -> InferredDistribution -> Cond.Tree -> AllStates -> Results
+mkResults a adjustedSize inferredDist ctree states =
   Results
-    (Alphabet.size a)
+    { alphabetSize          = Alphabet.size a
+    , dataSize              = adjustedSize
+    , relativeEntropy       = Stats.relativeEntropy inferredDist sz
+    , relativeEntropyRate   = Stats.relativeEntropyRate a sz inferredDist ctree states
+    , statisticalComplexity = Stats.cMu (V.fromList (toList allstatesDist))
+    , entropyRate           = Stats.entropyRate a states
+    , variation             = Stats.variation allstatesDist sz
+    , inferredStates        = fromIntegral (HS.size states)
+    }
 
-    adjustedSize
-
-    -- relativeEntropy :: InferredDistribution -> Double -> Double
-    (Stats.relativeEntropy undefined sz)
-
-    -- FIXME: there is no function here
-    0
-
-    -- cMu :: forall f . (Num f, Floating f) => Vector f -> f
-    (Stats.cMu undefined)
-
-    -- entropyRate :: Alphabet -> AllStates -> Double
-    (Stats.entropyRate a states)
-
-    -- variation :: HashMap State Double -> Double -> Double
-    (Stats.variation (distribution a states) sz)
-
-    (fromIntegral $ HS.size states)
   where
-    sz :: Double
+    sz :: Num n => n
     sz = fromIntegral adjustedSize
+
+    allstatesDist :: HashMap State Double
+    allstatesDist = distribution a states
+

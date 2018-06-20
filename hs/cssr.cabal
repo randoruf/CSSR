@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 06d90952641990f17004be3e87e8b223d1cc6936d56a17657cfe0c96f3a80638
+-- hash: bd27ec5816d76869cac179517d08d360fa429b3972e7b6dd6e037c2e6db67bcb
 
 name:           cssr
 version:        0.0.0.1
@@ -65,7 +65,6 @@ library
       Numeric.CSSR.Algorithm.Phase2
       Numeric.CSSR.Algorithm.Phase3
       Numeric.CSSR.Inferred
-      Numeric.CSSR.Internal
       Numeric.CSSR.Results
       Numeric.CSSR.Results.GraphViz
       Numeric.CSSR.Statistics
