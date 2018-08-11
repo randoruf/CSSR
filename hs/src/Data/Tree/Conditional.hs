@@ -14,7 +14,7 @@ import qualified Data.Vector.Generic as GV
 
 import CSSR.Prelude
 import CSSR.Probabilistic (Probabilistic)
-import Data.Alphabet
+import Data.CSSR.Alphabet
 import qualified CSSR.Probabilistic as Prob
 import qualified Data.Tree.Internal as I
 import qualified Data.Tree.Parse  as P
@@ -82,6 +82,8 @@ lobsL = bodyL . obsL
 lfrequencyL :: Lens' Leaf (Vector Integer)
 lfrequencyL = bodyL . frequencyL
 
+total :: Leaf -> Integer
+total = V.sum . view lfrequencyL
 
 instance Probabilistic Leaf where
   frequency = GV.convert . view (bodyL . frequencyL)
@@ -169,7 +171,7 @@ showAllObs :: [Leaf] -> String
 showAllObs = T.unpack . T.intercalate "," . fmap (T.concat . V.toList . obs . body)
 
 showAllDists :: [Leaf] -> String
-showAllDists = show . fmap (intercalate "," . V.toList . fmap f'4 . Prob.freqToDist . frequency . body)
+showAllDists = show . fmap (intercalate "," . V.toList . fmap (T.unpack . f'4) . Prob.freqToDist . frequency . body)
 
 
 getDepth :: Tree -> Int -> [Leaf]

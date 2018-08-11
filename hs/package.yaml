@@ -39,6 +39,7 @@ library:
     - microlens
     - hashtables
     - primitive
+    - protolude
 
     # for graphviz
     - graphviz
@@ -56,13 +57,17 @@ executables:
 tests:
 
   spec:
-    ghc-options: -Wno-unused-top-binds # so that we can run per-module main functions
+    # so that we can run per-module main functions
+    ghc-options: -Wno-unused-matches -Wno-unused-top-binds
     source-dirs: test
     main: Spec.hs
     dependencies:
       - cssr
       - hspec
+      - text
       - QuickCheck
+      - unordered-containers
+      - vector
 
 benchmarks:
   bench:

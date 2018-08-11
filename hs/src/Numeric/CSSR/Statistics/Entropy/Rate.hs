@@ -1,14 +1,15 @@
-module CSSR.Statistics.EntropyRate where
+module Numeric.CSSR.Statistics.Entropy.Rate where
 
 import CSSR.Prelude
-import CSSR.AllStates
-import Data.Alphabet
+import Data.CSSR.State
+import Data.CSSR.Alphabet
 import qualified Data.HashMap.Strict as HM
+import qualified Data.HashSet as HS
 
 
 entropyRate :: Alphabet -> AllStates -> Double
 entropyRate a as =
-  (-1) * sum (go <$> as)
+  (-1) * sum (HS.map go as)
   where
     -- FIXME: why is this described as both prob and freq?
     toProb :: State -> Double
@@ -21,7 +22,7 @@ entropyRate a as =
     go s = foldl' (stateEntRate (toProb s)) 0 (HM.toList (toSDist s))
 
     stateEntRate :: Double -> Double -> (Event, Double) -> Double
-    stateEntRate freq sEntRate (e, p)
-      | p  > 0 = sEntRate + freq * p * logBase 2 p
-      | p <= 0 = sEntRate
+    stateEntRate freq sEntRate (_, p)
+      | p  > 0    = sEntRate + freq * p * logBase 2 p
+      | otherwise = sEntRate
 

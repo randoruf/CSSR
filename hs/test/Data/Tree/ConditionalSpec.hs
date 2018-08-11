@@ -6,7 +6,7 @@ import qualified Data.Text as T
 import qualified Data.HashSet as HS
 
 import CSSR.Fixtures (shortEP)
-import Data.Alphabet (mkAlphabet)
+import Data.CSSR.Alphabet (mkAlphabet)
 
 import qualified Data.Tree.Conditional as Cond
 import qualified Data.MTree.Parse      as Parse (buildTree)

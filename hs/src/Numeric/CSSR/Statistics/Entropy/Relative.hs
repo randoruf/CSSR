@@ -1,9 +1,9 @@
-module CSSR.Statistics.Entropy.Relative where
+module Numeric.CSSR.Statistics.Entropy.Relative where
 
 import CSSR.Prelude
 import qualified Data.Tree.Conditional as Cond
 
-type InferredDistribution = [(Cond.Leaf, Double)]
+import Numeric.CSSR.Inferred
 
 -- calculates the probability of all the max length strings in the
 -- data based on the inferred machine:
@@ -42,22 +42,6 @@ relativeEntropy dist adjustedDataSize =
       where
         observedProb :: Double
         observedProb = (fromIntegral . sum $ view Cond.lfrequencyL leaf) / adjustedDataSize
-
-{-
-  def relativeEntropy(dist:InferredDistribution, adjustedDataSize:Double):Double = {
-    val relativeEntropy:Double = dist.foldLeft(0d) {
-      case (incrementalRelEnt, (leaf, inferredProb)) =>
-        val observedProb = leaf.totalCounts / adjustedDataSize
-        if (observedProb > 0){
-          val cacheRE = incrementalRelEnt + discreteEntropy(observedProb, inferredProb)
-          cacheRE
-        } else {
-          incrementalRelEnt
-        }
-    }
-    if (relativeEntropy < 0) 0 else relativeEntropy
-  }
--}
 
 {-
 -- Kullback-Leibler Distance:

@@ -45,10 +45,9 @@
 -------------------------------------------------------------------------------
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-} -- FIXME: remove when collectLeaves has no undefined values
-module CSSR.Algorithm.Phase3 where
+module Numeric.CSSR.Algorithm.Phase3 where
 
-import Data.Alphabet
+import Data.CSSR.Alphabet
 import CSSR.Prelude.Mutable
 import CSSR.Probabilistic
 

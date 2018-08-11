@@ -1,5 +1,4 @@
-{-# OPTIONS_GHC -Wno-type-defaults #-}
-module CSSR.Statistics.F1 where
+module Numeric.CSSR.Statistics.F1 where
 
 import CSSR.Prelude
 

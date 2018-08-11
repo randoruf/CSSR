@@ -3,7 +3,7 @@
 module Data.MTree.Parse where
 
 import CSSR.Prelude.Mutable
-import Data.Alphabet
+import Data.CSSR.Alphabet
 import qualified Data.Tree.Parse as P
 
 import qualified CSSR.Prelude.Vector   as V

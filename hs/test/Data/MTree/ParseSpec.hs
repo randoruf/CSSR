@@ -3,7 +3,7 @@ module Data.MTree.ParseSpec where
 
 import Data.MTree.Parse
 
-import Data.Alphabet
+import Data.CSSR.Alphabet
 
 import qualified Data.Tree.Parse  as P
 import qualified Data.HashSet     as HS
