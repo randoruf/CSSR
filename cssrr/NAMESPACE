@@ -1,0 +1,3 @@
+useDynLib(cssrr, .registration=TRUE)
+exportPattern("^[[:alpha:]]+")
+importFrom(Rcpp, evalCpp)
